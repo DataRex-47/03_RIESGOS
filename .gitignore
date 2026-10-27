@@ -1,0 +1,63 @@
+# Sistema
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Entornos y dependencias
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Datos — se ignora el contenido pero se conserva la estructura
+02_datos/**
+!02_datos/**/
+!02_datos/**/.gitkeep
+
+# Modelos entrenados y artefactos
+05_modelos/**
+!05_modelos/.gitkeep
+*.pkl
+*.pickle
+*.joblib
+
+# Resultados y entregables: se ignoran los archivos pesados, pero los informes en Markdown sí suben
+06_resultados/**
+!06_resultados/**/
+!06_resultados/**/*.md
+!06_resultados/.gitkeep
+
+# Formatos de datos sueltos
+*.csv
+*.xlsx
+*.parquet
+*.feather
+*.db
+*.sqlite
+*.duckdb
+
+# Excepción: las tres salidas pequeñas que alimentan el tablero de Power BI
+# (el resto de datos, la base original y los modelos siguen sin subir)
+!07_despliegue/predicciones.csv
+!07_despliegue/backtest.csv
+!07_despliegue/DatosParaProduccion.csv
+
+# Documentos
+*.pdf
+/01_Documentos/notebooks_referencia/
+
+# Configuración local de Copilot
+/.github/**/*.agent.md
+/.github/**/*.prompt.md
+/.github/**/copilot-instructions.md
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
