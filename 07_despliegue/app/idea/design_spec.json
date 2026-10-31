@@ -1,0 +1,273 @@
+{
+  "nombre_app": "Bancandrex Mesa de Decisión de Crédito",
+  "idea_en_una_linea": "Un analista elige un cliente, simula un préstamo y ve en segundos si conviene, cuánto se podría perder y por qué. Además compara 36 contra 60 meses con un solo clic.",
+  "branding": {
+    "logo": "assets/logo_bancandrex.png",
+    "logo_ancho": 300,
+    "favicon": "assets/favicon_bancandrex.png",
+    "tono": "banco sobrio y claro, sin adornos",
+    "colores": {
+      "primario": "#12304A",
+      "secundario": "#137C86",
+      "acento": "#E3A72F",
+      "fondo": "#F5F7F8",
+      "tarjeta": "#FFFFFF",
+      "texto": "#1B2733",
+      "riesgo_bajo": "#2E9E6B",
+      "riesgo_medio": "#E3A72F",
+      "riesgo_alto": "#C8453B"
+    },
+    "regla_visual": "El color verde, ámbar y rojo se usa solo para el nivel de riesgo. Nada más en la pantalla usa esos tres colores."
+  },
+  "layout": {
+    "estructura": "Sin barra lateral. Cabecera con el logo, tarjeta de solicitud arriba y debajo dos pestañas que comparten esa solicitud.",
+    "cabecera": {
+      "izquierda": "logo",
+      "derecha": "Una línea con la fórmula: pérdida esperada es probabilidad de impago por monto por exposición por pérdida si no paga"
+    },
+    "pestanas": [
+      "Evaluar solicitud",
+      "Comparar plazos"
+    ],
+    "pestana_comparar_plazos": "Misma solicitud, dos tarjetas lado a lado: 36 meses y 60 meses.",
+    "pestana_veredicto": "Tarjeta de veredicto y dos barras (EAD y LGD) a la izquierda, medidor de PD a la derecha, y abajo la cascada de la pérdida esperada."
+  },
+  "entradas": {
+    "cliente": {
+      "widget": "selectbox",
+      "etiqueta": "Cliente",
+      "campo_api": "id_cliente",
+      "valores": "ids de demo_clientes.csv",
+      "decision": "Decidido: la API expone GET /clientes con los ids. La app no tiene copia del CSV."
+    },
+    "principal": {
+      "widget": "slider",
+      "etiqueta": "Monto del préstamo (USD)",
+      "campo_api": "principal",
+      "min": 500,
+      "max": 40000,
+      "paso": 500,
+      "valor_inicial": 10000
+    },
+    "tipo_interes": {
+      "widget": "slider",
+      "etiqueta": "Tasa de interés anual (%)",
+      "campo_api": "tipo_interes",
+      "min": 5,
+      "max": 31,
+      "paso": 0.25,
+      "valor_inicial": 12
+    },
+    "num_cuotas": {
+      "widget": "radio horizontal",
+      "etiqueta": "Plazo",
+      "campo_api": "num_cuotas",
+      "opciones": [
+        {
+          "texto": "36 meses",
+          "valor": 36
+        },
+        {
+          "texto": "60 meses",
+          "valor": 60
+        }
+      ],
+      "valor_inicial": 36,
+      "nota": "Solo dos plazos porque el modelo se entrenó únicamente con 36 y 60. No mostrar otros."
+    },
+    "finalidad": {
+      "widget": "selectbox",
+      "etiqueta": "Para qué es el préstamo",
+      "campo_api": "finalidad",
+      "valor_inicial": "debt_consolidation",
+      "opciones": [
+        {
+          "texto": "Consolidar deudas",
+          "valor": "debt_consolidation"
+        },
+        {
+          "texto": "Pagar tarjeta de crédito",
+          "valor": "credit_card"
+        },
+        {
+          "texto": "Mejoras del hogar",
+          "valor": "home_improvement"
+        },
+        {
+          "texto": "Compra grande",
+          "valor": "major_purchase"
+        },
+        {
+          "texto": "Pequeño negocio",
+          "valor": "small_business"
+        },
+        {
+          "texto": "Vehículo",
+          "valor": "car"
+        },
+        {
+          "texto": "Gastos médicos",
+          "valor": "medical"
+        },
+        {
+          "texto": "Mudanza",
+          "valor": "moving"
+        },
+        {
+          "texto": "Vacaciones",
+          "valor": "vacation"
+        },
+        {
+          "texto": "Vivienda",
+          "valor": "house"
+        },
+        {
+          "texto": "Boda",
+          "valor": "wedding"
+        },
+        {
+          "texto": "Educación",
+          "valor": "educational"
+        },
+        {
+          "texto": "Energía renovable",
+          "valor": "renewable_energy"
+        },
+        {
+          "texto": "Otra",
+          "valor": "other"
+        }
+      ]
+    },
+    "vivienda": {
+      "widget": "radio horizontal",
+      "etiqueta": "Situación de vivienda",
+      "campo_api": "vivienda",
+      "valor_inicial": "RENT",
+      "opciones": [
+        {
+          "texto": "Arriendo",
+          "valor": "RENT"
+        },
+        {
+          "texto": "Propia",
+          "valor": "OWN"
+        },
+        {
+          "texto": "Hipoteca",
+          "valor": "MORTGAGE"
+        },
+        {
+          "texto": "Otra",
+          "valor": "OTHER"
+        }
+      ]
+    },
+    "boton": {
+      "texto": "Evaluar solicitud",
+      "accion": "Despertar la API con GET /health y enviar POST /predict con una lista de un registro",
+      "mientras_espera": "Analizando la solicitud. Si el servicio estaba dormido, puede tardar hasta un minuto."
+    }
+  },
+  "salidas": {
+    "fuente": "Solo los campos reales de la API: pd_score, ead_score, lgd_score y perdida_esperada. El monto sale de lo que escribió el analista.",
+    "veredicto": {
+      "tarjeta": "Grande, a la izquierda. Borde y etiqueta con el color del nivel de riesgo.",
+      "contenido": [
+        "Etiqueta del nivel: Riesgo bajo, Riesgo medio o Riesgo alto",
+        "Frase de apoyo según el nivel",
+        "Pérdida esperada en dinero, con letra grande",
+        "Pérdida esperada como porcentaje del monto prestado"
+      ],
+      "frases": {
+        "bajo": "Perfil sólido. Se puede aprobar con condiciones estándar.",
+        "medio": "Conviene revisarlo con un analista antes de decidir.",
+        "alto": "Probabilidad de impago elevada. Considerar rechazo o pedir garantías."
+      }
+    },
+    "umbrales": {
+      "variable": "pd_score",
+      "bajo": "menor que 0.08",
+      "medio": "desde 0.08 hasta 0.15",
+      "alto": "mayor que 0.15",
+      "donde_vive": "En la app, en una constante al inicio del archivo, para poder cambiarlos sin tocar la API.",
+      "por_que_estos": "Se calcularon con los 200000 préstamos ya puntuados: 38.6 % quedan en bajo, 36.8 % en medio y 24.6 % en alto. Un corte en 50 % casi nunca se activaría porque solo el 0.4 % de los préstamos supera esa probabilidad.",
+      "mostrar_en_pantalla": "Los umbrales se ven como marcas en la medida de PD, para que el analista entienda por qué salió ese color."
+    },
+    "medidas": {
+      "disposicion": "Tres tarjetas pequeñas a la derecha del veredicto, apiladas.",
+      "pd": {
+        "titulo": "Probabilidad de impago",
+        "formato": "porcentaje con un decimal",
+        "visual": "Medidor semicircular con las tres zonas de color y la aguja en el valor. Es la medida principal."
+      },
+      "ead": {
+        "titulo": "Cuánto debería al fallar",
+        "formato": "porcentaje del monto, y debajo el monto en dinero",
+        "visual": "Barra horizontal de 0 a 100 %, color primario."
+      },
+      "lgd": {
+        "titulo": "Cuánto no se recupera",
+        "formato": "porcentaje",
+        "visual": "Barra horizontal de 0 a 100 %, color secundario."
+      }
+    },
+    "cascada": {
+      "titulo": "Cómo se llega a la pérdida esperada",
+      "pasos": [
+        {
+          "nombre": "Monto prestado",
+          "calculo": "principal"
+        },
+        {
+          "nombre": "Exposición al fallar",
+          "calculo": "principal por ead_score"
+        },
+        {
+          "nombre": "Pérdida si no paga",
+          "calculo": "exposición por lgd_score"
+        },
+        {
+          "nombre": "Pérdida esperada",
+          "calculo": "pérdida si no paga por pd_score"
+        }
+      ],
+      "visual": "Cuatro bloques en fila, cada uno más angosto que el anterior, con la cifra en dinero y el factor que lo reduce.",
+      "control": "El último valor debe coincidir con perdida_esperada que devuelve la API. Si no coincide, mostrar el de la API y registrar la diferencia en consola."
+    }
+  },
+  "pestana_comparar_plazos": {
+    "idea": "Con la misma solicitud, ver qué pasa si el plazo es 36 o 60 meses.",
+    "como": "Un solo POST /predict con dos registros iguales que solo cambian en num_cuotas.",
+    "contenido": [
+      "Dos tarjetas lado a lado, una por plazo",
+      "En cada una: nivel de riesgo, probabilidad de impago, pérdida esperada en dinero y como porcentaje del monto",
+      "Marcar con una insignia el plazo con menor pérdida esperada en dinero"
+    ],
+    "no_prometer": "La API no devuelve la cuota mensual, así que no se muestra. Si se quiere, hay que decidirlo antes."
+  },
+  "estados_y_errores": {
+    "servicio_dormido": "Mensaje amable y barra de carga. La app despierta la API sola antes de cada cálculo y reintenta una vez.",
+    "cliente_no_existe": "Respuesta 404. Texto: Ese cliente no está en el historial. Elige otro.",
+    "dato_invalido": "Respuesta 422. Texto: Algún dato está fuera de rango. Revisa el monto, la tasa o el plazo.",
+    "error_del_servidor": "Respuesta 500. Texto: No pudimos calcular el riesgo. Inténtalo de nuevo en un momento.",
+    "sin_conexion": "Texto: No hay conexión con el servicio.",
+    "regla": "Nunca mostrar el error técnico crudo ni el JSON en pantalla."
+  },
+  "formato_de_numeros": {
+    "dinero": "USD con separador de miles, por ejemplo $12,400",
+    "porcentajes": "un decimal, por ejemplo 9.7 %",
+    "idioma": "español"
+  },
+  "no_incluido": [
+    "Barra lateral",
+    "Plazos de 12, 24 o 48 meses",
+    "Vista previa del JSON",
+    "Datos técnicos de la API en pantalla"
+  ],
+  "decisiones": [
+    "Lista de clientes: ruta GET /clientes en la API (opción B)",
+    "Ficha del cliente: fuera por ahora",
+    "Cortes del semáforo 8 % y 15 %: propuesta, falta confirmar"
+  ]
+}

@@ -67,6 +67,16 @@ def health():
     return {"status": "OK"}
 
 
+# La app llama aquí para llenar su selector de clientes
+@app.get("/clientes")
+def clientes():
+    # Solo enviamos los ids, nunca el historial del cliente
+    ids = []
+    for id_cliente in historial.index:
+        ids.append(int(id_cliente))
+    return {"ids": ids}
+
+
 @app.post("/predict", response_model=list[ScoringSalida])
 def predict(solicitudes: list[RegistroEntrada]):
     datos = prepara_entrada(solicitudes)
