@@ -2,23 +2,38 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# ── Valores que el modelo conoce ─────────
+# Son los mismos valores del dataset. Si llega otro, la API lo rechaza (error 422),
+# porque el modelo lo trataría en silencio como si fuera el valor de referencia.
+VIVIENDA = Literal["RENT", "OWN", "MORTGAGE", "ANY", "NONE", "OTHER"]
+FINALIDAD = Literal[
+    "debt_consolidation", "credit_card", "home_improvement", "major_purchase",
+    "small_business", "car", "medical", "moving", "vacation", "house",
+    "other", "wedding", "educational", "renewable_energy",
+]
 
-# ── Datos que llegan desde la aplicación ─────────
+
+# ── Lo que envía la app: una solicitud de préstamo ─────────
 class RegistroEntrada(BaseModel):
+    # Si llega un campo que no está en esta lista, se rechaza (error 422)
     model_config = ConfigDict(extra="forbid")
 
-    id_cliente: int = Field(..., alias="id_cliente")
-    principal: float = Field(..., gt=0, alias="principal")
-    tipo_interes: float = Field(..., ge=0, alias="tipo_interes")
-    num_cuotas: Literal[36, 60] = Field(..., alias="num_cuotas")
-    finalidad: str = Field(..., alias="finalidad")
-    vivienda: str = Field(..., alias="vivienda")
+    # Un campo sin valor por defecto es obligatorio
+    id_cliente: int
+
+    # Los rangos son los que el modelo vio al entrenar
+    principal: float = Field(ge=500, le=40000)
+    tipo_interes: float = Field(ge=5, le=31)  # porcentaje anual, por ejemplo 7.21
+
+    num_cuotas: Literal[36, 60]
+    finalidad: FINALIDAD
+    vivienda: VIVIENDA
 
 
-# ── Resultado completo del scoring ─────────
+# ── Lo que devuelve la API por cada solicitud ─────────
 class ScoringSalida(BaseModel):
-    id_cliente: int = Field(..., alias="id_cliente")
-    pd_score: float = Field(..., alias="pd_score")
-    ead_score: float = Field(..., alias="ead_score")
-    lgd_score: float = Field(..., alias="lgd_score")
-    perdida_esperada: float = Field(..., alias="perdida_esperada")
+    id_cliente: int
+    pd_score: float
+    ead_score: float
+    lgd_score: float
+    perdida_esperada: float

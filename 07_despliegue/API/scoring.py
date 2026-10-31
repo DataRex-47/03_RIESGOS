@@ -4,11 +4,8 @@ import cloudpickle
 import numpy as np
 import pandas as pd
 
-
-# ── Rutas y variables del modelo ─────────
-DIRECTORIO_API = Path(__file__).resolve().parent
-DIRECTORIO_DESPLIEGUE = DIRECTORIO_API.parent
-ID = "id_cliente"
+# ── Columnas que esperan los modelos ─────────
+# Las mismas que usa 02_produccion_scoring.py, en el mismo orden.
 COLUMNAS_PREDICTORAS = [
     "ingresos_verificados",
     "vivienda",
@@ -25,54 +22,44 @@ COLUMNAS_PREDICTORAS = [
     "imp_cuota",
     "num_derogatorios",
 ]
-NOMBRES_MODELOS = [
-    "artefacto_pipeline_pd.pkl",
-    "artefacto_pipeline_ead.pkl",
-    "artefacto_pipeline_lgd.pkl",
-]
-MODELOS = None
+
+# En el entrenamiento se descartaron los ingresos mayores a este valor
+TOPE_INGRESOS = 400000
+
+# ── Carga de los tres modelos (una sola vez, al arrancar) ─────────
+CARPETA = Path(__file__).resolve().parent
 
 
-# ── Carga de los tres modelos ─────────
-def cargar_modelos():
-    global MODELOS #interesante
-
-    if MODELOS is None:
-        modelos_cargados = []
-
-        for nombre in NOMBRES_MODELOS:
-            ruta_api = DIRECTORIO_API / nombre
-            ruta_despliegue = DIRECTORIO_DESPLIEGUE / nombre
-
-            if ruta_api.exists():
-                ruta_artefacto = ruta_api
-            else:
-                ruta_artefacto = ruta_despliegue
-
-            with open(ruta_artefacto, "rb") as archivo:
-                modelos_cargados.append(cloudpickle.load(archivo))
-
-        MODELOS = modelos_cargados
-
-    return MODELOS
+def carga_modelo(nombre_archivo):
+    with open(CARPETA / nombre_archivo, "rb") as archivo:
+        return cloudpickle.load(archivo)
 
 
-# ── Predicción en memoria ─────────
-def scoring_df(df):
-    pipeline_pd, pipeline_ead, pipeline_lgd = cargar_modelos()
+MODELO_PD = carga_modelo("artefacto_pipeline_pd.pkl")
+MODELO_EAD = carga_modelo("artefacto_pipeline_ead.pkl")
+MODELO_LGD = carga_modelo("artefacto_pipeline_lgd.pkl")
 
-    X_scoring = df.loc[:, COLUMNAS_PREDICTORAS].copy()
-    X_scoring["ingresos"] = X_scoring["ingresos"].clip(upper=400000)
-    resultados = pd.DataFrame({ID: df[ID].to_numpy()})
 
-    resultados["pd_score"] = pipeline_pd.predict_proba(X_scoring)[:, 1]
-    resultados["ead_score"] = np.clip(pipeline_ead.predict(X_scoring), 0, 1)
-    resultados["lgd_score"] = np.clip(pipeline_lgd.predict(X_scoring), 0, 1)
+# ── Scoring ─────────
+def scoring_df(datos):
+    # Solo las columnas del modelo (el id se queda fuera)
+    X = datos[COLUMNAS_PREDICTORAS].copy()
+    X["ingresos"] = X["ingresos"].clip(upper=TOPE_INGRESOS)
+
+    resultados = pd.DataFrame({"id_cliente": datos["id_cliente"]})
+
+    # PD: probabilidad de la clase 1 (impago)
+    resultados["pd_score"] = MODELO_PD.predict_proba(X)[:, 1]
+
+    # EAD y LGD son proporciones entre 0 y 1
+    resultados["ead_score"] = np.clip(MODELO_EAD.predict(X), 0, 1)
+    resultados["lgd_score"] = np.clip(MODELO_LGD.predict(X), 0, 1)
+
+    # Pérdida esperada = PD x principal x EAD x LGD
     resultados["perdida_esperada"] = (
         resultados["pd_score"]
-        * df["principal"].to_numpy()
+        * datos["principal"]
         * resultados["ead_score"]
         * resultados["lgd_score"]
     )
-
     return resultados
