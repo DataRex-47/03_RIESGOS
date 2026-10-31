@@ -1,0 +1,51 @@
+id_cliente,ingresos,ingresos_verificados,rating,dti,antigüedad_empleo,num_lineas_credito,porc_uso_revolving,num_derogatorios
+4155468,185000.0,Verified,A,12.57,9 years,16.0,39.6,0.0
+39987410,158251.0,Verified,C,20.47,10+ years,10.0,92.4,0.0
+97268680,35000.0,Source Verified,A,6.93,4 years,9.0,22.3,0.0
+1434140,28800.0,Verified,A,23.24,< 1 year,16.0,22.2,0.0
+8654614,130000.0,Source Verified,C,18.47,10+ years,16.0,76.6,0.0
+56041566,84000.0,Not Verified,A,27.16,10+ years,22.0,26.7,0.0
+141570988,36000.0,Source Verified,A,7.43,3 years,4.0,54.9,0.0
+24244815,95000.0,Verified,C,17.89,< 1 year,18.0,91.5,1.0
+124910840,43000.0,Not Verified,C,25.37,10+ years,12.0,47.1,1.0
+111100904,48000.0,Not Verified,A,21.05,10+ years,10.0,15.7,0.0
+144986550,105000.0,Source Verified,A,14.34,10+ years,10.0,74.4,0.0
+91067613,95000.0,Source Verified,B,18.84,10+ years,11.0,71.4,0.0
+119365157,113500.0,Not Verified,C,6.04,10+ years,11.0,25.0,1.0
+48060499,20800.0,Verified,C,30.47,2 years,13.0,50.1,0.0
+112441828,265000.0,Source Verified,D,13.73,4 years,22.0,71.2,3.0
+130107028,65000.0,Not Verified,B,10.96,2 years,23.0,74.6,1.0
+131472162,100000.0,Verified,D,17.51,10+ years,11.0,44.2,0.0
+65601520,52000.0,Source Verified,A,14.15,3 years,12.0,26.9,0.0
+74551431,80000.0,Source Verified,B,9.15,10+ years,7.0,79.1,1.0
+62419702,80000.0,Not Verified,B,10.26,< 1 year,22.0,38.2,0.0
+12326068,150000.0,Source Verified,E,11.18,10+ years,8.0,67.5,0.0
+61632311,93000.0,Not Verified,D,22.57,10+ years,12.0,95.6,0.0
+223308,85000.0,Not Verified,C,1.78,1 year,7.0,50.5,1.0
+12245062,92000.0,Source Verified,B,17.15,2 years,10.0,80.1,0.0
+144297485,70000.0,Not Verified,A,29.3,10+ years,17.0,38.3,0.0
+77447313,103000.0,Not Verified,A,21.94,10+ years,9.0,41.8,0.0
+86592946,51465.0,Source Verified,F,27.78,3 years,28.0,62.3,0.0
+116778956,94000.0,Source Verified,B,19.98,7 years,12.0,64.0,0.0
+70835707,119000.0,Not Verified,C,21.01,10+ years,18.0,81.6,0.0
+60265892,60000.0,Verified,D,23.83,2 years,21.0,51.2,0.0
+142349058,120000.0,Source Verified,B,16.13,1 year,17.0,37.7,0.0
+142989126,65000.0,Source Verified,D,24.21,9 years,12.0,78.9,0.0
+76374971,121000.0,Source Verified,E,11.63,8 years,27.0,93.5,1.0
+70871794,54000.0,Source Verified,C,22.84,3 years,11.0,39.0,0.0
+111659738,68500.0,Not Verified,B,19.32,10+ years,17.0,60.0,0.0
+30705750,40320.0,Not Verified,B,14.61,9 years,11.0,30.7,0.0
+136194463,47736.0,Not Verified,D,15.76,3 years,7.0,11.2,0.0
+22311550,37900.0,Source Verified,D,27.71,2 years,9.0,46.2,0.0
+126505152,108000.0,Source Verified,B,17.7,10+ years,14.0,13.4,0.0
+93281145,93600.0,Not Verified,B,6.92,1 year,9.0,62.0,0.0
+139607180,56000.0,Not Verified,A,11.51,2 years,7.0,23.6,0.0
+111700083,50000.0,Not Verified,B,19.26,1 year,12.0,55.9,1.0
+79742860,39000.0,Source Verified,E,26.4,8 years,9.0,78.1,1.0
+71864958,42000.0,Not Verified,B,21.8,10+ years,14.0,11.8,0.0
+60902209,40000.0,Source Verified,B,9.73,< 1 year,8.0,50.8,0.0
+61552248,60000.0,Not Verified,C,14.04,3 years,26.0,51.9,0.0
+84646007,75000.0,Source Verified,D,13.2,3 years,6.0,40.9,1.0
+77512584,43000.0,Verified,A,12.87,8 years,7.0,45.8,0.0
+80748116,105000.0,Not Verified,B,25.71,6 years,7.0,84.6,0.0
+46386687,75000.0,Verified,B,8.4,10+ years,7.0,57.8,0.0

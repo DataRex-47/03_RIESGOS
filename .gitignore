@@ -48,6 +48,7 @@ __pycache__/
 
 # Documentos
 *.pdf
+/01_Documentos/Resumen_En_Cristiano.md
 /01_Documentos/notebooks_referencia/
 
 # Configuración local de Copilot
@@ -61,3 +62,9 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+
+# Datos de ejemplo y modelos necesarios para desplegar la API
+!07_despliegue/api/demo_clientes.csv
+!07_despliegue/api/artefacto_pipeline_pd.pkl
+!07_despliegue/api/artefacto_pipeline_ead.pkl
+!07_despliegue/api/artefacto_pipeline_lgd.pkl

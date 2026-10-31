@@ -1,16 +1,17 @@
 """
-utils.py — las funciones del catálogo del vault, listas para importar.
+utils.py: el ORIGINAL de las funciones reutilizables.
 
-GENERADO desde `00_CATALOGO_FUNCIONES.md`, que es la fuente canónica.
-No se edita a mano sin devolver el cambio al catálogo: si las dos versiones
-divergen, deja de haber una sola verdad.
+Es la única fuente del código. El catálogo del vault (`00_CATALOGO_FUNCIONES.md`)
+solo explica qué hace cada función y cuándo usarla, y no contiene el código.
+Cada proyecto recibe una copia de este archivo en `04_scripts/` y anota la versión.
+Las mejoras se hacen aquí, nunca en la copia de un proyecto.
 
 Uso:
     from utils import frecuencias_cat, graficos_eda_categoricos
     frecuencias_cat(df.select_dtypes('object'))
 
-⚠️ CUATRO FUNCIONES NO SON IMPORTABLES TAL CUAL — dependen de variables
-   globales que en el catálogo venían del notebook. Hay que darles parámetro:
+⚠️ CUATRO FUNCIONES NO SON IMPORTABLES TAL CUAL: dependen de variables
+   globales que en su origen venían del notebook. Hay que darles parámetro:
      · limpiar_columnas_texto  → usa BASURA
      · ranking_mi              → usa x (las predictoras)
      · log                     → usa CONFIG y datetime
@@ -19,6 +20,9 @@ Uso:
 """
 
 from __future__ import annotations
+
+__version__ = "1.0"
+__fecha__ = "30/10/2026"
 
 # ── Imports ─────────────────────────────────────────────────────────
 import os

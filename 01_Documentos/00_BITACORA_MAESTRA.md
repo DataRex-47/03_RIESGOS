@@ -2,11 +2,13 @@
 tags: [bitacora, scoring-riesgos, caso-ml, contexto]
 aliases: [Bitácora Scoring de Riesgos, Contexto del Proyecto 3]
 date: 2026-10-11
-updated: 2026-10-24
+updated: 2026-10-30
 status: 🌱 (Seed)
 ---
 
 # 🧭 Bitácora Maestra: Caso 3 · Scoring de Riesgos
+
+> 📍 **Bitacorizado hasta:** modelización, preproducción y scoring cerrados (30/10/2026) · siguiente paso: API (A_11), luego app (A_12)
 
 > [!SUMMARY] Para qué sirve
 > Reengancharte en 3 minutos y practicar sin releer los notebooks.
@@ -17,9 +19,11 @@ status: 🌱 (Seed)
 
 ## 📍 Dónde estoy
 
-**Fases 01 a 04 cerradas (17/10/2026).** Importación, Calidad, EDA y Transformación hechas. Los tres tablones (PD, EAD y LGD) están en `03_Entrenamiento`. **Fases 05 y 06 omitidas por decisión (24/10/2026):** no hay preselección ni balanceo, queda un informe de conexión en `06_resultados/Preseleccion/`.
+**Fases 01 a 04 cerradas (17/10/2026).** Importación, Calidad, EDA y Transformación hechas. **Fases 05 y 06 omitidas por decisión (24/10/2026).** **Modelización, preproducción, reentrenamiento y scoring cerrados (27/10/2026):** los tres modelos están entrenados y sus artefactos y scripts están en `07_despliegue/`.
 
-**Siguiente acción:** modelización (notebook 07): PD con regresión logística y LASSO, EAD y LGD con LightGBM.
+**Siguiente acción:** API en FastAPI (agente A_11) y app del gestor en Streamlit (agente A_12). El semáforo y sus cortes se deciden más adelante.
+
+**Contrato de entrada definido (30/10/2026):** 6 variables por la app (`id_cliente`, `principal`, `tipo_interes`, `num_cuotas`, `finalidad`, `vivienda`), 8 por el historial del cliente en CSV (`ingresos`, `ingresos_verificados`, `rating`, `dti`, `antigüedad_empleo`, `num_lineas_credito`, `porc_uso_revolving`, `num_derogatorios`) y `imp_cuota` calculada con el sistema francés. Detalle en `07_despliegue/variables_entrada_backend.md`.
 
 > [!IMPORTANT] 📌 Para releer: la idea que lo ordena todo
 > **Valor esperado = probabilidad de que ocurra un evento × impacto económico si ocurre.**
@@ -27,11 +31,22 @@ status: 🌱 (Seed)
 
 ---
 
+## 🔓 Decisiones abiertas
+
+| Decisión | Opciones | Quién decide | Qué bloquea | Desde |
+|---|---|---|---|---|
+| Dónde vive el semáforo y sus cortes (propuesta de partida: 8 % y 15 %) | 1) La API devuelve PD, EAD, LGD y pérdida esperada y la app pone el color. 2) La API devuelve también el color, con cortes configurables | Rex (pospuesta hasta después de la API) | Contrato de salida y app | 27/10 |
+| Escritura de `antigüedad_empleo` | 1) Con ü en todo el contrato, como los artefactos. 2) Sin ü en el contrato y la API la renombra | Rex | Contrato de la API: una diferencia de tilde da error | 30/10 |
+| Formato de `tipo_interes` y `num_cuotas` para la fórmula francesa | `tipo_interes` como porcentaje anual (12) o como fracción (0,12); `num_cuotas` como número que la API pasa al modelo como categoría | Rex | Cálculo de `imp_cuota` | 30/10 |
+| Cómo llegan artefactos y CSV de historial a Render | 1) Subir solo una muestra pequeña con `id_cliente` y las 8 columnas de historial, más los 3 `.pkl`, con excepciones en el `.gitignore` (nunca el CSV completo ni columnas de resultado). 2) Generarlos al desplegar | Rex | Despliegue: hoy `*.pkl` y `*.csv` están ignorados | 30/10 |
+
+---
+
 ## 🔗 La cadena
 
 ```
 A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 Balanceo > A_07 Modelos > A_08/A_09 Preprod. > API + App
-    ✅             ✅           ✅           ✅              ⏭️ omitida       ⏭️ omitida      📍 AQUÍ          ⬜             ⬜
+    ✅             ✅           ✅           ✅              ⏭️ omitida       ⏭️ omitida      ✅               ✅             📍 AQUÍ
 ```
 
 **Diferencia con los casos 1 y 2:** técnicamente es el más sencillo, pero el más cargado de negocio. Y el énfasis está en el **despliegue**: una app en Streamlit que llama por POST a una API en FastAPI publicada en Render (diagrama en `docs/diagrama_despliegue_v2.png`).
@@ -161,6 +176,29 @@ A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 B
 
 ---
 
+## 7️⃣ a 9️⃣ Modelización, preproducción y scoring ✅
+
+> [!QUESTION]- ¿Por qué el artefacto final no se evalúa con la reserva?
+> Porque se reentrena con todos los datos, reserva incluida, y ya la vio. La nota válida es la de la fase 1: entrenar con el 70 %, medir una sola vez con la reserva, y luego reentrenar con la misma receta para producir. Resumen de una página: `01_Documentos/Flujo_Preproduccion_a_Produccion.pdf`.
+
+| Modelo | Algoritmo | Métrica en la reserva |
+|---|---|---|
+| PD | Regresión logística con Lasso | AUC 0,7006 |
+| EAD | HistGradientBoosting | MAE 0,1588 |
+| LGD | HistGradientBoosting | MAE 0,0900 |
+
+* El notebook 10 quita la reserva al cargar el CSV y trabaja solo con el 70 %. Su 70/30 interno solo comprueba que reproduce lo de 07, 08 y 09.
+* `01_reentrenamiento.py` busca hiperparámetros con validación cruzada, mide en la reserva y reentrena con todo. `02_produccion_scoring.py` puntúa con los tres artefactos y calcula la pérdida esperada.
+* Informes: `06_resultados/Modelizacion/informe_modelizacion.md` y `06_resultados/Preproduccion/informe_preproduccion.md`.
+
+**En disco:** `07_despliegue/artefacto_pipeline_{pd,ead,lgd}.pkl` · `07_despliegue/pre-produccion/` (manifiesto y resumen)
+
+> [!EXAMPLE]- 🏋️ Practica
+> 1. Explica sin código por qué el escalado se ajusta dentro de cada pliegue de la validación cruzada.
+> 2. Calcula a mano la pérdida esperada de un préstamo con PD 10 %, principal 10.000, EAD 0,7 y LGD 0,9.
+
+---
+
 ## 🧰 Funciones del catálogo usadas hasta ahora
 
 | Función | Para qué se usó |
@@ -170,6 +208,8 @@ A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 B
 | `contar_atipicos()` | Contar atípicos por método (ampliada) |
 | `convertir_a_int()` | Pasar recuentos a entero (nueva) |
 | `eliminar_indices()` | Quitar los mismos registros de varios DataFrames (nueva) |
+| `plot_roc_multi_np()` | Curvas ROC de varios modelos con su AUC (fase 07) |
+| `reporting_regresion()` | Reporte de un regresor en una llamada: real contra predicho, residuos y error por tramos (fases 08 y 09) |
 
 ---
 
@@ -178,3 +218,5 @@ A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 B
 * README del proyecto: se escribe cuando exista la app, con la estructura del de Forecasting más una sección para los tres modelos y el diagrama de despliegue.
 * Leer la normativa de Basilea (matiz entre pérdida esperada y capital regulatorio, ver `Riesgo_y_Banca/Basilea_y_Crisis_2008.md`).
 * Proyecto pequeño sobre `empleo` y `descripcion`: normalizar el texto y agrupar los empleos en categorías, a ver si dan variables útiles.
+* Llevar a `docs/` del proyecto y a `Recursos-Assets` del vault los diagramas nuevos de ChatGPT (vida real frente a simulación, y cómo se consume la API).
+* Los 100 préstamos con `ingresos` igual a 0 y el motivo de dejar fuera `num_hipotecas`, `porc_tarjetas_75p` y `num_cancelaciones_12meses`.
