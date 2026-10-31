@@ -22,16 +22,18 @@ La reserva de 01 se lee de su archivo y se quita justo después de cargar el CSV
 | Reserva de 01 | 60.000 |
 | Trabajo (70 %) | 140.000 |
 | Tras calidad y filtro de ingresos mayores a 400.000 | 139.602 |
-| Tablón de PD | 139.602 filas y 30 columnas |
-| Tablones de EAD y LGD (solo impagos) | 16.549 filas y 31 columnas |
+| Tablón de PD | 139.602 filas y 28 columnas (27 predictoras y el objetivo) |
+| Tablones de EAD y LGD (solo impagos) | 16.549 filas y 29 columnas |
 
 Cada modelo hace un 70/30 interno solo para comprobar que el notebook reproduce lo que ya habías obtenido en 07, 08 y 09. No sirve para elegir hiperparámetros.
 
 | Modelo | Métrica del notebook | Referencia en 07, 08 y 09 |
 |---|---|---|
-| PD (AUC) | 0,695 | 0,698 a 0,703 |
-| EAD (MAE) | 0,158 | 0,158 |
-| LGD (MAE) | 0,089 | 0,088 a 0,090 |
+| PD (AUC) | 0,694 | 0,694 |
+| EAD (MAE) | 0,162 | 0,162 |
+| LGD (MAE) | 0,088 | 0,088 |
+
+Estos valores son los del reentrenamiento del 31/10/2026, ya sin `tipo_interes` ni `imp_cuota` (ver el informe de modelización).
 
 ## 3. Qué pasó en el reentrenamiento
 
@@ -39,9 +41,9 @@ El script trabaja en dos fases por cada modelo. La fase 1 mide: busca hiperpará
 
 | Modelo | Mejores hiperparámetros | Validación cruzada | Reserva de 01 |
 |---|---|---|---|
-| PD, regresión logística Lasso | `l1_ratio` 1, `C` 1 | AUC 0,6999 | AUC 0,7006 |
-| EAD, HistGradientBoosting | `learning_rate` 0,05, `max_depth` 20, `max_iter` 200, `l2_regularization` 0,5 | MAE 0,1577 | MAE 0,1588 |
-| LGD, HistGradientBoosting | `learning_rate` 0,05, `max_depth` 5, `max_iter` 50, `l2_regularization` 0,25 | MAE 0,0887 | MAE 0,0900 |
+| PD, regresión logística ElasticNet | `l1_ratio` 0,5, `C` 0,25 | AUC 0,6972 | AUC 0,6979 |
+| EAD, Ridge | `alpha` 1 | MAE 0,1621 | MAE 0,1647 |
+| LGD, HistGradientBoosting | `learning_rate` 0,025, `max_depth` 5, `max_iter` 50, `l2_regularization` 0,5 | MAE 0,0887 | MAE 0,0900 |
 
 Los resultados en validación cruzada y en la reserva son casi iguales, así que no hay sobreajuste. La nota que se reporta de cada modelo es la de la reserva. El artefacto final se entrenó con todos los datos y ya no se puede evaluar con la reserva, porque ya la vio.
 
@@ -51,7 +53,7 @@ Los resultados en validación cruzada y en la reserva son casi iguales, así que
 | `artefacto_pipeline_ead.pkl` | 23.644 impagos |
 | `artefacto_pipeline_lgd.pkl` | 23.644 impagos |
 
-Los hiperparámetros ganadores no son exactamente los del notebook (por ejemplo `C` 1 en vez de 0,05 en PD). Las métricas son prácticamente iguales, porque las curvas son planas cerca del óptimo.
+Los ganadores no son exactamente los del notebook (por ejemplo ElasticNet con `C` 0,25 en vez de Lasso con 0,05 en PD, y HistGradientBoosting en LGD en vez de Lasso). El script busca al azar entre 20 candidatos y mide con otra reserva, y sin la tasa las curvas son muy planas: los candidatos empatan dentro del ruido (±0,005 en AUC). Por eso cambiar de algoritmo no cambia el resultado. Antes de quitar la tasa, el AUC en reserva era 0,7006 y el MAE del EAD 0,1588; ahora son 0,6979 y 0,1647.
 
 ## 4. Cómo leer `01_reentrenamiento.py`
 
@@ -73,7 +75,7 @@ Dos detalles para recordar. EAD y LGD se entrenan solo con préstamos en default
 | Bloque | Qué hace |
 |---|---|
 | Argumentos | Recibe dos parámetros, input (CSV de préstamos) y output (CSV de resultados) |
-| Lectura | Lee el CSV y toma solo las 14 columnas predictoras |
+| Lectura | Lee el CSV y toma solo las 12 columnas predictoras (sin tasa ni cuota) |
 | Tope de ingresos | Un ingreso mayor a 400.000 se puntúa como si fuera 400.000, para no distorsionar el escalado. Nadie se descarta |
 | Carga y predicción | Carga los tres artefactos, que traen el preprocesamiento adentro, y predice. EAD y LGD se recortan a 0 y 1 |
 | Pérdida esperada | PD por principal por EAD por LGD, como indica el manifiesto |
@@ -90,10 +92,10 @@ Se ejecutó sobre `prestamos.csv` completo como prueba de funcionamiento.
 | Filas de entrada y de salida | 200.000 y 200.000 |
 | Valores nulos | Ninguno |
 | PD media | 0,118, muy cerca de la tasa real de impago (0,1186) |
-| EAD media | 0,675 |
-| LGD media | 0,890 |
-| Pérdida esperada media por préstamo | 1.180 |
-| Pérdida esperada total | 236 millones |
+| EAD media | 0,665 |
+| LGD media | 0,889 |
+| Pérdida esperada media por préstamo | 1.167 |
+| Pérdida esperada total | 233 millones |
 
 Esta prueba incluye préstamos con los que se entrenó, así que confirma que el script funciona pero no sirve como evaluación. La evaluación válida es la de la reserva en la sección 3.
 
@@ -112,3 +114,5 @@ Esta prueba incluye préstamos con los que se entrenó, así que confirma que el
 1. Construir la API con FastAPI que cargue los tres artefactos una sola vez.
 2. Construir la app de Streamlit que consuma la API.
 3. Desplegar en Render.
+
+Los tres pasos ya están hechos. Tras el cambio del 31/10/2026, la API recibe 5 datos de la solicitud (cliente, monto, plazo, finalidad y vivienda), devuelve además una **tasa sugerida** y tiene una ruta nueva para consultar la ficha del cliente. El detalle está en los informes de la API y de la app.

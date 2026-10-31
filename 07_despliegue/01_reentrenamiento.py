@@ -36,8 +36,6 @@ COLUMNAS_NUMERICAS = [
     "num_lineas_credito",
     "porc_uso_revolving",
     "principal",
-    "tipo_interes",
-    "imp_cuota",
 ]
 COLUMNAS_BINARIAS = ["num_derogatorios"]
 COLUMNAS_PREDICTORAS = [
@@ -52,8 +50,6 @@ COLUMNAS_PREDICTORAS = [
     "num_lineas_credito",
     "porc_uso_revolving",
     "principal",
-    "tipo_interes",
-    "imp_cuota",
     "num_derogatorios",
 ]
 ORDEN_ANTIGUEDAD = [

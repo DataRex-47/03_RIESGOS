@@ -21,8 +21,6 @@ COLUMNAS_PREDICTORAS = [
     "num_lineas_credito",
     "porc_uso_revolving",
     "principal",
-    "tipo_interes",
-    "imp_cuota",
     "num_derogatorios",
 ]
 

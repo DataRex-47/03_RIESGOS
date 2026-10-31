@@ -18,13 +18,19 @@ COLUMNAS_PREDICTORAS = [
     "num_lineas_credito",
     "porc_uso_revolving",
     "principal",
-    "tipo_interes",
-    "imp_cuota",
     "num_derogatorios",
 ]
 
 # En el entrenamiento se descartaron los ingresos mayores a este valor
 TOPE_INGRESOS = 400000
+
+# ── Supuestos de la tasa sugerida (ilustrativos) ─────────
+# Vienen del ejemplo de la nota "Precio según riesgo" del vault: la tasa se arma
+# sumando lo que cuesta el dinero, lo que cuesta operar, la ganancia y la pérdida esperada.
+# No son la política de ningún banco real: se pueden cambiar aquí, en un solo sitio.
+COSTO_FONDEO = 3.0         # % anual: lo que le cuesta al banco conseguir el dinero
+COSTOS_OPERATIVOS = 0.7    # % anual: lo que cuesta operar el préstamo
+MARGEN = 1.3               # % anual: ganancia del banco
 
 # ── Carga de los tres modelos (una sola vez, al arrancar) ─────────
 CARPETA = Path(__file__).resolve().parent
@@ -63,3 +69,13 @@ def scoring_df(datos):
         * resultados["lgd_score"]
     )
     return resultados
+
+
+# ── Tasa sugerida ─────────
+def calcula_tasa_sugerida(perdida_esperada, principal, num_cuotas):
+    # La pérdida esperada es de todo el préstamo; la pasamos a porcentaje por año
+    anios = num_cuotas / 12
+    perdida_anual = 100 * perdida_esperada / principal / anios
+
+    # Tasa = costo del dinero + costos + ganancia + pérdida esperada por año
+    return COSTO_FONDEO + COSTOS_OPERATIVOS + MARGEN + perdida_anual

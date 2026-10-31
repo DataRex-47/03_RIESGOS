@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "generado_por": "A_08_Limpieza",
   "timestamp": "2026-10-26 20:42:13",
   "notebook": "03_notebooks/10_Preproduccion.ipynb",
@@ -15,8 +15,6 @@
       "num_lineas_credito",
       "porc_uso_revolving",
       "principal",
-      "tipo_interes",
-      "imp_cuota",
       "num_derogatorios",
       "ingresos_verificados",
       "vivienda",
@@ -45,8 +43,8 @@
     "tras_calidad_y_filtro_ingresos": 139602,
     "impagos": 16549,
     "tasa_impago": 0.1185,
-    "columnas_tablon_pd": 30,
-    "columnas_tablon_ead_lgd": 31
+    "columnas_tablon_pd": 28,
+    "columnas_tablon_ead_lgd": 29
   },
   "features_finalistas": [
     {
@@ -232,20 +230,6 @@
       "paso_id": "P20"
     },
     {
-      "nombre": "tipo_interes_scaled",
-      "tipo": "float64",
-      "origen": "tipo_interes",
-      "requiere_fit": true,
-      "paso_id": "P20"
-    },
-    {
-      "nombre": "imp_cuota_scaled",
-      "tipo": "float64",
-      "origen": "imp_cuota",
-      "requiere_fit": true,
-      "paso_id": "P20"
-    },
-    {
       "nombre": "num_derogatorios",
       "tipo": "float64",
       "origen": "num_derogatorios",
@@ -283,7 +267,7 @@
     {
       "nombre": "PD",
       "clase": "LogisticRegression",
-      "features": "las 29 features_finalistas",
+      "features": "las 27 features_finalistas",
       "variable_objetivo": "target_pd",
       "registros_totales": 139602,
       "registros_entrenamiento_aprox": 97721,
@@ -296,53 +280,43 @@
       },
       "metrica_validacion": {
         "nombre": "roc_auc",
-        "valor": 0.695
+        "valor": 0.694
       },
       "salida": "probabilidad de impago, ya en [0, 1]",
-      "metrica_reserva_de_01": 0.701
+      "metrica_reserva_de_01": 0.698
     },
     {
       "nombre": "EAD",
-      "clase": "HistGradientBoostingRegressor",
-      "features": "las 29 features_finalistas",
+      "clase": "Ridge",
+      "features": "las 27 features_finalistas",
       "variable_objetivo": "target_ead",
       "registros_totales": 16549,
       "registros_entrenamiento_aprox": 11584,
       "registros_validacion_aprox": 4965,
       "hiperparametros": {
-        "learning_rate": 0.05,
-        "l2_regularization": 0.25,
-        "max_depth": 5,
-        "max_iter": 200,
-        "min_samples_leaf": 60,
-        "scoring": "neg_mean_absolute_error"
+        "alpha": 0.1
       },
       "metrica_validacion": {
         "nombre": "mae",
-        "valor": 0.158
+        "valor": 0.162
       },
       "salida": "tanto por uno del principal, recortado a [0, 1]",
-      "metrica_reserva_de_01": 0.159
+      "metrica_reserva_de_01": 0.165
     },
     {
       "nombre": "LGD",
-      "clase": "HistGradientBoostingRegressor",
-      "features": "las 29 features_finalistas",
+      "clase": "Lasso",
+      "features": "las 27 features_finalistas",
       "variable_objetivo": "target_lgd",
       "registros_totales": 16549,
       "registros_entrenamiento_aprox": 11584,
       "registros_validacion_aprox": 4965,
       "hiperparametros": {
-        "learning_rate": 0.01,
-        "l2_regularization": 0,
-        "max_depth": 5,
-        "max_iter": 50,
-        "min_samples_leaf": 60,
-        "scoring": "neg_mean_absolute_error"
+        "alpha": 0.0001
       },
       "metrica_validacion": {
         "nombre": "mae",
-        "valor": 0.089
+        "valor": 0.088
       },
       "salida": "tanto por uno de lo pendiente, recortado a [0, 1]",
       "metrica_reserva_de_01": 0.09
@@ -352,7 +326,8 @@
     "ead": "np.where(pred < 0, 0, pred); np.where(pred > 1, 1, pred)",
     "lgd": "np.where(pred < 0, 0, pred); np.where(pred > 1, 1, pred)",
     "pd": "predict_proba[:, 1], ya en [0, 1]",
-    "perdida_esperada": "PD * principal * EAD * LGD"
+    "perdida_esperada": "PD * principal * EAD * LGD",
+    "tasa_sugerida": "costo_fondeo 3.0 + costos_operativos 0.7 + margen 1.3 + 100 * perdida_esperada / principal / (num_cuotas / 12); la calcula la API, no un modelo"
   },
   "dag_transformaciones": {
     "orden_ejecucion": [
@@ -736,13 +711,13 @@
       },
       {
         "paso_id": "P20",
-        "descripcion": "Min Max sobre las dos ordinales y las siete numericas",
+        "descripcion": "Min Max sobre las dos ordinales y las cinco numericas",
         "inputs": [
           "cat_oe",
-          "num[['ingresos','dti','num_lineas_credito','porc_uso_revolving','principal','tipo_interes','imp_cuota']]"
+          "num[['ingresos','dti','num_lineas_credito','porc_uso_revolving','principal']]"
         ],
         "outputs": [
-          "df_mms (9 columnas con sufijo _scaled)"
+          "df_mms (7 columnas con sufijo _scaled)"
         ],
         "depende_de": [
           "P18",
@@ -754,14 +729,14 @@
       },
       {
         "paso_id": "P21",
-        "descripcion": "Concatenacion de las 29 features finalistas",
+        "descripcion": "Concatenacion de las 27 features finalistas",
         "inputs": [
           "cat_ohe",
           "df_mms",
           "num_bin"
         ],
         "outputs": [
-          "variables (29 columnas)"
+          "variables (27 columnas)"
         ],
         "depende_de": [
           "P17",
@@ -984,5 +959,7 @@
         "codigo_referencia": "modelo_lgd = HistGradientBoostingRegressor(learning_rate=0.01, l2_regularization=0, max_depth=5, max_iter=50, min_samples_leaf=60, scoring='neg_mean_absolute_error'); modelo_lgd.fit(x_train, y_train); pred_lgd = modelo_lgd.predict(x_val); pred_lgd = np.where(pred_lgd < 0, 0, pred_lgd); pred_lgd = np.where(pred_lgd > 1, 1, pred_lgd)"
       }
     ]
-  }
+  },
+  "actualizado": "2026-10-31",
+  "cambios_v1_1": "Se quitan tipo_interes e imp_cuota de las predictoras (decision del 31/10/2026): la tasa la fija el banco segun el riesgo, asi que usarla para predecir el riesgo es circular. La tasa pasa a ser una salida de la API (tasa_sugerida). Features finalistas 29 a 27; algoritmos de EAD y LGD cambian a Ridge y Lasso porque sin la tasa empatan con HistGradientBoosting."
 }

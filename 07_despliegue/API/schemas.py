@@ -14,6 +14,8 @@ FINALIDAD = Literal[
 
 
 # ── Lo que envía la app: una solicitud de préstamo ─────────
+# La tasa de interés ya NO viaja aquí: la fija el banco según el riesgo,
+# así que la API la devuelve como respuesta (tasa_sugerida).
 class RegistroEntrada(BaseModel):
     # Si llega un campo que no está en esta lista, se rechaza (error 422)
     model_config = ConfigDict(extra="forbid")
@@ -23,7 +25,6 @@ class RegistroEntrada(BaseModel):
 
     # Los rangos son los que el modelo vio al entrenar
     principal: float = Field(ge=500, le=40000)
-    tipo_interes: float = Field(ge=5, le=31)  # porcentaje anual, por ejemplo 7.21
 
     num_cuotas: Literal[36, 60]
     finalidad: FINALIDAD
@@ -37,3 +38,5 @@ class ScoringSalida(BaseModel):
     ead_score: float
     lgd_score: float
     perdida_esperada: float
+    # Tasa anual mínima (en %) que cubre la pérdida esperada, los costos y la ganancia
+    tasa_sugerida: float

@@ -6,10 +6,10 @@ En este proyecto no se ejecutan los notebooks de preselección de variables ni d
 
 | Tema | Decisión | Por qué |
 |---|---|---|
-| Preselección de variables | No se hace | Hay 29 predictoras, pocas, y los modelos eligen variables por sí solos |
+| Preselección de variables | No se hace | Hay 27 predictoras, pocas, y los modelos eligen variables por sí solos |
 | Modelo PD | Regresión logística con regularización LASSO (L1) | L1 lleva a cero los coeficientes de las variables que no aportan, así que hace una preselección dentro del modelo |
-| Modelo EAD | LightGBM | Elige variables al partir los árboles |
-| Modelo LGD | LightGBM | Igual que EAD |
+| Modelo EAD | Ridge, Lasso o HistGradientBoosting (el grid escoge) | Sin la tasa gana un modelo lineal; los árboles dan el mismo error |
+| Modelo LGD | Igual que EAD | Gana Lasso con una penalización mínima: el LGD casi no se puede predecir |
 | Balanceo de clases | No se hace | Hay un 11,9 % de impagos y el modelo PD se mide con AUC |
 
 Cómo funciona LASSO: si entran 50 variables y el modelo lleva 20 coeficientes a cero, en la práctica modela con 30. Para que funcione bien, las variables deben tener la misma escala, y por eso en la transformación se escaló todo con Min Max. Otra forma de preseleccionar es RFE con L1, que descarta variables una a una.
@@ -20,13 +20,14 @@ Un modelo de adquisición solo puede usar variables que existan cuando se conced
 
 | Variables | ¿Se conocen al conceder? | Uso |
 |---|---|---|
-| `principal`, `tipo_interes`, `imp_cuota`, `num_cuotas`, `finalidad` | Sí | Predictoras |
+| `principal`, `num_cuotas`, `finalidad` | Sí | Predictoras |
+| `tipo_interes`, `imp_cuota` | Sí se conocen, pero **no se usan** (decisión del 31/10/2026) | La tasa la fija el banco según el riesgo del cliente, así que usarla para predecir ese riesgo es circular. Se devuelve como respuesta (tasa sugerida) |
 | `rating` | Sí, nota de riesgo según agencias | Predictora |
 | `ingresos`, `ingresos_verificados`, `vivienda`, `antiguedad_empleo` | Sí | Predictoras |
 | `dti`, `num_lineas_credito`, `porc_uso_revolving`, `num_derogatorios` | Sí, historial crediticio al pedir el préstamo | Predictoras |
 | `estado`, `imp_amortizado`, `imp_recuperado`, `pendiente` | No, ocurren después de conceder | Solo para crear las variables objetivo |
 
-Con esto, las 29 predictoras de los tablones cumplen la regla.
+Con esto, las 27 predictoras de los tablones cumplen la regla.
 
 ## 3. Dos tipos de modelos de riesgo
 

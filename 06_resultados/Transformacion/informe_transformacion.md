@@ -2,7 +2,7 @@
 
 | | Entrada | Salida |
 |---|---|---|
-| Datos | `cat_eda.pkl` y `num_eda.pkl`: 139.602 préstamos, 7 variables categóricas y 15 numéricas | 3 tablones: PD, EAD y LGD, con 29 predictoras cada uno |
+| Datos | `cat_eda.pkl` y `num_eda.pkl`: 139.602 préstamos, 7 variables categóricas y 15 numéricas | 3 tablones: PD, EAD y LGD, con 27 predictoras cada uno |
 | Referencia | `01_Documentos/FaseDesarrollo_PlantillaTransformaciones.xlsx` | `06_resultados/Transformacion/` |
 
 ## 1. Qué se hizo con cada variable
@@ -16,14 +16,15 @@
 | `finalidad` | `wedding`, `educational` y `renewable_energy` (255 préstamos) pasan a `other`, luego OHE | Categorías casi vacías | 11 columnas de 0 o 1 |
 | `num_cuotas` | One Hot Encoding | Solo tiene 2 valores: 36 y 60 meses | 2 columnas de 0 o 1 |
 | `num_derogatorios` | Binarizada: 0 si no hay incidencias, 1 si hay alguna | El 84,1 % tiene 0 y la cola llega a 46 con muy pocos casos | 117.439 con 0 y 22.163 con 1 |
-| `ingresos`, `dti`, `num_lineas_credito`, `porc_uso_revolving`, `principal`, `tipo_interes`, `imp_cuota` | Min Max | Dejarlas entre 0 y 1, igual que el resto | 7 columnas, de 0 a 1 |
+| `ingresos`, `dti`, `num_lineas_credito`, `porc_uso_revolving`, `principal` | Min Max | Dejarlas entre 0 y 1, igual que el resto | 5 columnas, de 0 a 1 |
+| `tipo_interes`, `imp_cuota` | Descartadas (decisión del 31/10/2026) | La tasa la fija el banco a partir del riesgo del cliente, así que usarla para predecir ese riesgo es circular. Casi repite el rating (correlación 0,953) y la cuota se calcula con la tasa | Fuera del tablón. La tasa pasa a ser una respuesta de la API (tasa sugerida) |
 | `num_meses_desde_ult_retraso` | Descartada | La tasa de impago es de 11 % a 13 % en todos los tramos, sin relación clara | Fuera del tablón |
 | `num_hipotecas`, `porc_tarjetas_75p`, `num_cancelaciones_12meses` | Sin transformación | La plantilla no las incluye y no dice el motivo | Fuera del tablón |
 | `estado` | Se usa para crear `target_pd` y después se elimina | Evita fuga de información y en producción no se conoce | Fuera del tablón |
 | `imp_amortizado`, `imp_recuperado` | Solo para crear las variables objetivo | Reflejan lo ocurrido después de dar el préstamo | Fuera del tablón |
 | `id_cliente` | Pasa a ser el índice | Sirve para rastrear el préstamo, no para predecir | Índice |
 
-Total de predictoras: 19 columnas OHE, 9 con Min Max y 1 binaria, es decir 29.
+Total de predictoras: 19 columnas OHE, 7 con Min Max y 1 binaria, es decir 27.
 
 ## 2. Un préstamo antes y después
 
@@ -42,7 +43,6 @@ Préstamo 4798121, que terminó en Charged Off:
 | `dti` | 25,4 | 0,25 |
 | `porc_uso_revolving` | 86,2 | 0,86 |
 | `principal` | 10.000 | 0,24 |
-| `tipo_interes` | 17,77 | 0,49 |
 | `estado` | Charged Off | `target_pd` = 1 |
 
 ## 3. Variables objetivo
@@ -82,9 +82,9 @@ Piezas que se crean en el notebook:
 |---|---|---|---|
 | `cat_ohe` | Variables categóricas con OHE | 19 | `OneHotEncoder` sobre `cat` |
 | `cat_oe` | `antiguedad_empleo` y `rating` como códigos | 2 | `OrdinalEncoder` sobre `cat` |
-| `num_escalar` | Las 7 numéricas a escalar, sin escalar | 7 | Selección de `num` |
-| `df_res` | `cat_oe` y `num_escalar` juntos | 9 | `pd.concat` |
-| `df_mms` | `df_res` ya escalado, con sufijo `_scaled` | 9 | `MinMaxScaler` |
+| `num_escalar` | Las 5 numéricas a escalar, sin escalar | 5 | Selección de `num` |
+| `df_res` | `cat_oe` y `num_escalar` juntos | 7 | `pd.concat` |
+| `df_mms` | `df_res` ya escalado, con sufijo `_scaled` | 7 | `MinMaxScaler` |
 | `num_bin` | `num_derogatorios` binaria | 1 | `Binarizer` |
 | `id_cliente` | Identificador del préstamo | 1 | Columna de `num` |
 | `y_pd`, `y_ead`, `y_lgd` | Las variables objetivo | 1 cada una | `cat` y `num` |
@@ -93,9 +93,9 @@ Cómo se unen en cada tablón:
 
 | Tablón | Se une así | Filtro | Resultado |
 |---|---|---|---|
-| `tabla_pd` | `id_cliente` + `X_pd` (`cat_ohe` + `df_mms` + `num_bin`) + `y_pd` | Ninguno | 139.602 filas y 30 columnas |
-| `tabla_ead` | `id_cliente` + `variables_ead` (`cat_ohe` + `df_mms` + `num_bin`) + `target_pd` + `y_ead` | `target_pd` igual a 1 | 16.549 filas y 31 columnas |
-| `tabla_lgd` | `id_cliente` + `variables_lgd` (`cat_ohe` + `df_mms` + `num_bin`) + `target_pd` + `y_lgd` | `target_pd` igual a 1 | 16.549 filas y 31 columnas |
+| `tabla_pd` | `id_cliente` + `X_pd` (`cat_ohe` + `df_mms` + `num_bin`) + `y_pd` | Ninguno | 139.602 filas y 28 columnas |
+| `tabla_ead` | `id_cliente` + `variables_ead` (`cat_ohe` + `df_mms` + `num_bin`) + `target_pd` + `y_ead` | `target_pd` igual a 1 | 16.549 filas y 29 columnas |
+| `tabla_lgd` | `id_cliente` + `variables_lgd` (`cat_ohe` + `df_mms` + `num_bin`) + `target_pd` + `y_lgd` | `target_pd` igual a 1 | 16.549 filas y 29 columnas |
 
 En los tres casos:
 
@@ -115,9 +115,9 @@ En los tres casos:
 
 | Tablón | Filas | Predictoras | Objetivo | Para el modelo |
 |---|---|---|---|---|
-| `df_tablon_pd.pkl` | 139.602 | 29 | `target_pd` | PD |
-| `df_tablon_ead.pkl` | 16.549 | 29 | `target_ead` | EAD |
-| `df_tablon_lgd.pkl` | 16.549 | 29 | `target_lgd` | LGD |
+| `df_tablon_pd.pkl` | 139.602 | 27 | `target_pd` | PD |
+| `df_tablon_ead.pkl` | 16.549 | 27 | `target_ead` | EAD |
+| `df_tablon_lgd.pkl` | 16.549 | 27 | `target_lgd` | LGD |
 
 Los tres están en `02_datos/03_Entrenamiento/`. EAD y LGD conservan `target_pd` (siempre 1) solo para filtrar, y hay que quitarla antes de entrenar.
 

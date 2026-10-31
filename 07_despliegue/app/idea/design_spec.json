@@ -1,6 +1,6 @@
 {
   "nombre_app": "Bancandrex Mesa de Decisión de Crédito",
-  "idea_en_una_linea": "Un analista elige un cliente, simula un préstamo y ve en segundos si conviene, cuánto se podría perder y por qué. Además compara 36 contra 60 meses con un solo clic.",
+  "idea_en_una_linea": "Un analista elige un cliente que ya existe en el banco, ve su ficha, simula un préstamo y ve en segundos si conviene, cuánto se podría perder y a qué tasa aprobarlo. Además compara 36 contra 60 meses con un solo clic.",
   "branding": {
     "logo": "assets/logo_bancandrex.png",
     "logo_ancho": 300,
@@ -38,7 +38,7 @@
       "etiqueta": "Cliente",
       "campo_api": "id_cliente",
       "valores": "ids de demo_clientes.csv",
-      "decision": "Decidido: la API expone GET /clientes con los ids. La app no tiene copia del CSV."
+      "decision": "Decidido: la API expone GET /clientes con los ids y GET /clientes/{id} con la ficha. La app no tiene copia del CSV. El cliente ya existe en el banco: la app no da de alta clientes nuevos."
     },
     "principal": {
       "widget": "slider",
@@ -48,15 +48,6 @@
       "max": 40000,
       "paso": 500,
       "valor_inicial": 10000
-    },
-    "tipo_interes": {
-      "widget": "slider",
-      "etiqueta": "Tasa de interés anual (%)",
-      "campo_api": "tipo_interes",
-      "min": 5,
-      "max": 31,
-      "paso": 0.25,
-      "valor_inicial": 12
     },
     "num_cuotas": {
       "widget": "radio horizontal",
@@ -161,28 +152,31 @@
           "texto": "Otra",
           "valor": "OTHER"
         }
-      ]
+      ],
+      "nota": "Se pide en la solicitud porque el historial de la demo no la trae."
     },
     "boton": {
       "texto": "Evaluar solicitud",
       "accion": "Despertar la API con GET /health y enviar POST /predict con una lista de un registro",
       "mientras_espera": "Analizando la solicitud. Si el servicio estaba dormido, puede tardar hasta un minuto."
-    }
+    },
+    "nota_tasa": "Decisión del 31/10/2026: la tasa NO es una entrada. La fija el banco según el riesgo, así que la API la devuelve como tasa_sugerida y la app la muestra."
   },
   "salidas": {
-    "fuente": "Solo los campos reales de la API: pd_score, ead_score, lgd_score y perdida_esperada. El monto sale de lo que escribió el analista.",
+    "fuente": "Solo los campos reales de la API: pd_score, ead_score, lgd_score, perdida_esperada y tasa_sugerida. El monto sale de lo que escribió el analista.",
     "veredicto": {
       "tarjeta": "Grande, a la izquierda. Borde y etiqueta con el color del nivel de riesgo.",
       "contenido": [
         "Etiqueta del nivel: Riesgo bajo, Riesgo medio o Riesgo alto",
-        "Frase de apoyo según el nivel",
+        "Frase de apoyo según el nivel, con la tasa sugerida",
         "Pérdida esperada en dinero, con letra grande",
-        "Pérdida esperada como porcentaje del monto prestado"
+        "Pérdida esperada como porcentaje del monto prestado",
+        "Tasa sugerida anual"
       ],
       "frases": {
-        "bajo": "Perfil sólido. Se puede aprobar con condiciones estándar.",
-        "medio": "Conviene revisarlo con un analista antes de decidir.",
-        "alto": "Probabilidad de impago elevada. Considerar rechazo o pedir garantías."
+        "bajo": "Perfil sólido. Se puede aprobar desde X % anual.",
+        "medio": "Conviene revisarlo con un analista. Si se aprueba, desde X % anual.",
+        "alto": "Considerar rechazo o pedir garantías. Si se aprueba, no bajo X % anual."
       }
     },
     "umbrales": {
@@ -191,7 +185,7 @@
       "medio": "desde 0.08 hasta 0.15",
       "alto": "mayor que 0.15",
       "donde_vive": "En la app, en una constante al inicio del archivo, para poder cambiarlos sin tocar la API.",
-      "por_que_estos": "Se calcularon con los 200000 préstamos ya puntuados: 38.6 % quedan en bajo, 36.8 % en medio y 24.6 % en alto. Un corte en 50 % casi nunca se activaría porque solo el 0.4 % de los préstamos supera esa probabilidad.",
+      "por_que_estos": "Con los modelos del 31/10/2026 y los 200000 préstamos puntuados: 38.0 % quedan en bajo, 37.2 % en medio y 24.8 % en alto. Un corte en 50 % casi nunca se activaría porque solo el 0.21 % de los préstamos supera esa probabilidad.",
       "mostrar_en_pantalla": "Los umbrales se ven como marcas en la medida de PD, para que el analista entienda por qué salió ese color."
     },
     "medidas": {
@@ -234,6 +228,20 @@
       ],
       "visual": "Cuatro bloques en fila, cada uno más angosto que el anterior, con la cifra en dinero y el factor que lo reduce.",
       "control": "El último valor debe coincidir con perdida_esperada que devuelve la API. Si no coincide, mostrar el de la API y registrar la diferencia en consola."
+    },
+    "ficha_cliente": {
+      "fuente": "GET /clientes/{id}",
+      "contenido": [
+        "Rating",
+        "Ingresos anuales",
+        "Verificación de ingresos",
+        "DTI",
+        "Antigüedad en el empleo",
+        "Líneas de crédito",
+        "Uso rotativo",
+        "Reportes negativos"
+      ],
+      "aviso": "Datos ficticios de demostración."
     }
   },
   "pestana_comparar_plazos": {
@@ -241,7 +249,7 @@
     "como": "Un solo POST /predict con dos registros iguales que solo cambian en num_cuotas.",
     "contenido": [
       "Dos tarjetas lado a lado, una por plazo",
-      "En cada una: nivel de riesgo, probabilidad de impago, pérdida esperada en dinero y como porcentaje del monto",
+      "En cada una: nivel de riesgo, probabilidad de impago, pérdida esperada en dinero y como porcentaje del monto, y tasa sugerida",
       "Marcar con una insignia el plazo con menor pérdida esperada en dinero"
     ],
     "no_prometer": "La API no devuelve la cuota mensual, así que no se muestra. Si se quiere, hay que decidirlo antes."
@@ -249,7 +257,7 @@
   "estados_y_errores": {
     "servicio_dormido": "Mensaje amable y barra de carga. La app despierta la API sola antes de cada cálculo y reintenta una vez.",
     "cliente_no_existe": "Respuesta 404. Texto: Ese cliente no está en el historial. Elige otro.",
-    "dato_invalido": "Respuesta 422. Texto: Algún dato está fuera de rango. Revisa el monto, la tasa o el plazo.",
+    "dato_invalido": "Respuesta 422. Texto: Algún dato está fuera de rango. Revisa el monto o el plazo.",
     "error_del_servidor": "Respuesta 500. Texto: No pudimos calcular el riesgo. Inténtalo de nuevo en un momento.",
     "sin_conexion": "Texto: No hay conexión con el servicio.",
     "regla": "Nunca mostrar el error técnico crudo ni el JSON en pantalla."
@@ -267,7 +275,8 @@
   ],
   "decisiones": [
     "Lista de clientes: ruta GET /clientes en la API (opción B)",
-    "Ficha del cliente: fuera por ahora",
+    "Ficha del cliente: incluida el 31/10/2026 con GET /clientes/{id}",
+    "Tasa: sale del formulario y pasa a ser resultado (tasa sugerida)",
     "Cortes del semáforo 8 % y 15 %: propuesta, falta confirmar"
   ]
 }

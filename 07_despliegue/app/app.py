@@ -91,7 +91,7 @@ def llama_api(metodo, ruta, datos=None):
     if respuesta.status_code == 404:
         return None, respuesta.json()["detail"]
     if respuesta.status_code == 422:
-        return None, "Algún dato está fuera de rango. Revisa el monto, la tasa o el plazo."
+        return None, "Algún dato está fuera de rango. Revisa el monto o el plazo."
     if respuesta.status_code != 200:
         return None, "No pudimos calcular el riesgo. Inténtalo de nuevo en un momento."
     return respuesta.json(), None
@@ -117,26 +117,36 @@ def carga_clientes():
     return st.session_state["ids"]
 
 
+def carga_ficha(id_cliente):
+    # La ficha es lo que el banco ya sabe del cliente; se pide una vez por cliente
+    if "fichas" not in st.session_state:
+        st.session_state["fichas"] = {}
+    if id_cliente not in st.session_state["fichas"]:
+        ficha, error = llama_api("GET", "/clientes/" + str(id_cliente))
+        st.session_state["fichas"][id_cliente] = ficha  # Si falla queda en None
+    return st.session_state["fichas"][id_cliente]
+
+
 # ── Datos de la solicitud ─────────
 def arma_registro(solicitud, num_cuotas):
-    # Estos seis campos son el contrato de entrada de la API (schemas.py)
+    # Estos cinco campos son el contrato de entrada de la API (schemas.py).
+    # La tasa no se envía: la fija el banco según el riesgo y la API la devuelve.
     return {
         "id_cliente": solicitud["id_cliente"],
         "principal": solicitud["principal"],
-        "tipo_interes": solicitud["tipo_interes"],
         "num_cuotas": num_cuotas,
         "finalidad": solicitud["finalidad"],
         "vivienda": solicitud["vivienda"],
     }
 
 
-def nivel_riesgo(pd_score):
+def nivel_riesgo(pd_score, tasa):
     # Devuelve el texto, el color, el fondo suave y lo que se sugiere hacer
     if pd_score < UMBRAL_BAJO:
-        return "Riesgo bajo", VERDE, "#E6F4EC", "Perfil sólido. Se puede aprobar con condiciones estándar."
+        return "Riesgo bajo", VERDE, "#E6F4EC", f"Perfil sólido. Se puede aprobar desde {tasa:.1f} % anual."
     if pd_score <= UMBRAL_ALTO:
-        return "Riesgo medio", AMBAR, "#FBF3E0", "Conviene revisarlo con un analista antes de decidir."
-    return "Riesgo alto", ROJO, "#F9E8E6", "Probabilidad de impago elevada. Considerar rechazo o pedir garantías."
+        return "Riesgo medio", AMBAR, "#FBF3E0", f"Conviene revisarlo con un analista. Si se aprueba, desde {tasa:.1f} % anual."
+    return "Riesgo alto", ROJO, "#F9E8E6", f"Considerar rechazo o pedir garantías. Si se aprueba, no bajo {tasa:.1f} % anual."
 
 
 # ── Estilos ─────────
@@ -156,7 +166,11 @@ def aplica_estilos():
                   justify-content: space-between; align-items: center; gap: 20px; }
         .banner-nivel { font-size: 2rem; font-weight: 800; }
         .banner-frase { color: #1B2733; font-size: 1.05rem; margin-top: 4px; }
-        .banner-cifra { text-align: right; }
+        .banner > div:first-child { flex: 2 1 320px; }
+        .banner-cifra { text-align: right; flex: 1 1 190px; }
+        .leyenda { display: flex; align-items: center; gap: 10px; padding: 4px 0; color: #1B2733; }
+        .leyenda:last-child { margin-bottom: 10px; }
+        .punto { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
         .etiqueta { color: #5B6670; font-size: 0.9rem; }
         .cifra { color: #12304A; font-size: 2.6rem; font-weight: 800; line-height: 1.1; }
         .cifra-media { color: #12304A; font-size: 1.7rem; font-weight: 700; }
@@ -169,6 +183,11 @@ def aplica_estilos():
         .operador { align-self: center; color: #137C86; font-weight: 700; text-align: center; min-width: 70px; }
         .insignia { display: inline-block; background: #12304A; color: #FFFFFF; border-radius: 20px;
                     padding: 3px 14px; font-size: 0.8rem; margin-left: 8px; vertical-align: middle; }
+        .ficha { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #EEF1F3; }
+        .ficha:last-child { border-bottom: none; }
+        .ficha-dato { color: #1B2733; font-weight: 600; }
+        .rating { display: inline-block; background: #12304A; color: #FFFFFF; border-radius: 8px;
+                  padding: 1px 12px; font-weight: 700; }
         .vacio { background: #FFFFFF; border: 2px dashed #C9D3DA; border-radius: 14px; padding: 36px;
                  text-align: center; color: #5B6670; }
         </style>
@@ -189,7 +208,7 @@ def dibuja_cabecera():
     with col_texto:
         st.markdown(
             "<div class='pista' style='text-align:right; padding-top:26px;'>"
-            "Evalúa una solicitud de préstamo y conoce su riesgo en segundos</div>",
+            "Evalúa un préstamo para un cliente del banco y conoce su riesgo en segundos</div>",
             unsafe_allow_html=True,
         )
 
@@ -199,25 +218,80 @@ def etiqueta_cliente(id_cliente):
     return "Cliente " + str(id_cliente)
 
 
+def texto_antiguedad(texto):
+    # Los valores vienen en inglés ("10+ years"); aquí se muestran en español
+    if texto == "< 1 year":
+        return "Menos de 1 año"
+    if texto == "10+ years":
+        return "10 años o más"
+    if texto == "1 year":
+        return "1 año"
+    if texto.endswith(" years"):
+        return texto.replace(" years", " años")
+    return "Sin dato"
+
+
+VERIFICACION = {"Verified": "Verificados", "Source Verified": "Fuente verificada", "Not Verified": "No verificados"}
+
+
+def fila_ficha(titulo, valor):
+    return f"<div class='ficha'><span class='etiqueta'>{titulo}</span><span class='ficha-dato'>{valor}</span></div>"
+
+
+def dibuja_ficha(ficha):
+    if ficha is None:
+        st.caption("No se pudo cargar la ficha del cliente.")
+        return
+    filas = (
+        fila_ficha("Calificación (rating)", f"<span class='rating'>{ficha['rating']}</span>")
+        + fila_ficha("Ingresos anuales", dinero(ficha["ingresos"]))
+        + fila_ficha("Verificación de ingresos", VERIFICACION.get(ficha["ingresos_verificados"], "Sin dato"))
+        + fila_ficha("Deuda sobre ingresos (DTI)", f"{ficha['dti']:.1f} %")
+        + fila_ficha("Antigüedad en el empleo", texto_antiguedad(ficha["antiguedad_empleo"]))
+        + fila_ficha("Líneas de crédito", str(ficha["num_lineas_credito"]))
+        + fila_ficha("Uso del crédito rotativo", f"{ficha['porc_uso_revolving']:.1f} %")
+        + fila_ficha("Reportes negativos", str(ficha["num_derogatorios"]))
+    )
+    st.markdown(filas, unsafe_allow_html=True)
+
+
 def dibuja_formulario(ids):
-    with st.container(border=True):
-        st.markdown("<div class='seccion'>Datos de la solicitud</div>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns(3, gap="large")
-        with col1:
+    col_cliente, col_solicitud = st.columns([4, 6], gap="large")
+
+    with col_cliente:
+        with st.container(border=True):
+            st.markdown("<div class='seccion'>Cliente del banco</div>", unsafe_allow_html=True)
             id_cliente = st.selectbox("Cliente", ids, format_func=etiqueta_cliente)
-            principal = st.slider("Monto del préstamo (USD)", 500, 40000, 10000, step=500, format="$%d")
-        with col2:
-            tipo_interes = st.slider("Tasa de interés anual (%)", 5.0, 31.0, 12.0, step=0.25)
-            plazo = st.radio("Plazo", list(PLAZOS.keys()), horizontal=True)
-        with col3:
-            finalidad = st.selectbox("Para qué es el préstamo", list(FINALIDADES.keys()))
-            vivienda = st.selectbox("Situación de vivienda", list(VIVIENDAS.keys()))
-        boton = st.button("Evaluar solicitud", type="primary")
+            st.caption("Se evalúan clientes que ya tienen historial en el banco (datos ficticios de demostración).")
+            dibuja_ficha(carga_ficha(int(id_cliente)))
+
+    with col_solicitud:
+        with st.container(border=True):
+            st.markdown("<div class='seccion'>Solicitud de préstamo</div>", unsafe_allow_html=True)
+            col1, col2 = st.columns(2, gap="large")
+            with col1:
+                principal = st.slider("Monto del préstamo (USD)", 500, 40000, 10000, step=500, format="$%d")
+                finalidad = st.selectbox("Para qué es el préstamo", list(FINALIDADES.keys()))
+            with col2:
+                plazo = st.radio("Plazo", list(PLAZOS.keys()), horizontal=True)
+                vivienda = st.selectbox("Situación de vivienda", list(VIVIENDAS.keys()))
+            st.caption("La tasa no se escribe: el banco la fija según el riesgo, y la app te la sugiere en el resultado.")
+            boton = st.button("Evaluar solicitud", type="primary")
+
+        with st.container(border=True):
+            st.markdown("<div class='seccion'>Cómo leer el semáforo</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div class='leyenda'><span class='punto' style='background:{VERDE};'></span><b>Riesgo bajo:</b> probabilidad de impago menor a {UMBRAL_BAJO * 100:.0f} %</div>
+                <div class='leyenda'><span class='punto' style='background:{AMBAR};'></span><b>Riesgo medio:</b> de {UMBRAL_BAJO * 100:.0f} % a {UMBRAL_ALTO * 100:.0f} %</div>
+                <div class='leyenda'><span class='punto' style='background:{ROJO};'></span><b>Riesgo alto:</b> mayor a {UMBRAL_ALTO * 100:.0f} %</div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     solicitud = {
         "id_cliente": int(id_cliente),
         "principal": float(principal),
-        "tipo_interes": float(tipo_interes),
         "num_cuotas": PLAZOS[plazo],
         "finalidad": FINALIDADES[finalidad],
         "vivienda": VIVIENDAS[vivienda],
@@ -228,12 +302,12 @@ def dibuja_formulario(ids):
 def resumen_solicitud(s, plazo_fijo=None):
     # Una línea con lo que se evaluó, para que nadie confunda el resultado con otro cliente
     plazo = plazo_fijo or str(s["num_cuotas"]) + " meses"
-    return f"Cliente {s['id_cliente']} · {dinero(s['principal'])} · {plazo} · {s['tipo_interes']:.2f} % anual"
+    return f"Cliente {s['id_cliente']} · {dinero(s['principal'])} · {plazo}"
 
 
 # ── Pantalla: veredicto ─────────
 def dibuja_banner(monto, r):
-    etiqueta, color, fondo, frase = nivel_riesgo(r["pd_score"])
+    etiqueta, color, fondo, frase = nivel_riesgo(r["pd_score"], r["tasa_sugerida"])
     por_cada_100 = r["perdida_esperada"] / monto * 100
     st.markdown(
         f"""
@@ -246,6 +320,11 @@ def dibuja_banner(monto, r):
                 <div class='etiqueta'>Pérdida esperada</div>
                 <div class='cifra'>{dinero(r["perdida_esperada"])}</div>
                 <div class='pista'>{porcentaje(r["perdida_esperada"] / monto)} del monto: ${por_cada_100:.2f} por cada $100 prestados</div>
+            </div>
+            <div class='banner-cifra'>
+                <div class='etiqueta'>Tasa sugerida</div>
+                <div class='cifra'>{r["tasa_sugerida"]:.1f} %</div>
+                <div class='pista'>anual, mínima para cubrir la pérdida esperada</div>
             </div>
         </div>
         """,
@@ -376,7 +455,7 @@ def dibuja_veredicto(solicitud):
 
 # ── Pantalla: comparar 36 contra 60 meses ─────────
 def dibuja_tarjeta_plazo(plazo, monto, r, es_menor):
-    etiqueta, color, fondo, frase = nivel_riesgo(r["pd_score"])
+    etiqueta, color, fondo, frase = nivel_riesgo(r["pd_score"], r["tasa_sugerida"])
     insignia = "<span class='insignia'>Menor pérdida esperada</span>" if es_menor else ""
     st.markdown(
         f"""
@@ -388,6 +467,8 @@ def dibuja_tarjeta_plazo(plazo, monto, r, es_menor):
             <div class='etiqueta' style='margin-top:14px;'>Pérdida esperada</div>
             <div class='cifra'>{dinero(r["perdida_esperada"])}</div>
             <div class='pista'>{porcentaje(r["perdida_esperada"] / monto)} del monto prestado</div>
+            <div class='etiqueta' style='margin-top:14px;'>Tasa sugerida</div>
+            <div class='cifra-media'>{r["tasa_sugerida"]:.1f} % anual</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -470,6 +551,10 @@ st.write("")
 with st.expander("¿Cómo se calcula la pérdida esperada?"):
     st.write("Pérdida esperada = probabilidad de impago (PD) × monto × exposición al fallar (EAD) × pérdida si no paga (LGD).")
     st.write("Los cortes del semáforo sobre la PD son: bajo menos de 8 %, medio de 8 % a 15 %, alto más de 15 %.")
+with st.expander("¿Cómo se calcula la tasa sugerida?"):
+    st.write("Tasa sugerida = costo del dinero + costos de operar + ganancia + pérdida esperada por año.")
+    st.write("La pérdida esperada se pasa a porcentaje del monto y se divide entre los años del plazo. El costo del dinero, los costos y la ganancia son supuestos ilustrativos fijados en la API: no son la política de ningún banco real.")
+    st.write("El modelo no usa la tasa para predecir el riesgo: la tasa la fija el banco al conceder, a partir del riesgo, y usarla como dato sería circular.")
 with st.expander("Para el equipo técnico"):
     st.write("API en uso: " + API_BASE_URL)
     st.write("En Render, la variable de entorno API_BASE_URL debe tener la URL pública de la API.")
