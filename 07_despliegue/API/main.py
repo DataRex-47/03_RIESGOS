@@ -1,10 +1,14 @@
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 
+#trae registroentrada que es lo que entra desde la app/erp de schemas, para
+#entrar en una funcion
 from schemas import RegistroEntrada, ScoringSalida
 from scoring import calcula_tasa_sugerida, scoring_df
+from seguridad import verifica_clave
 
 # ── Historial de clientes ─────────
 # Este CSV simula la base de datos del banco: el historial de cada cliente.
@@ -25,9 +29,26 @@ COLUMNAS_HISTORIAL = [
 historial = pd.read_csv(CARPETA / "demo_clientes.csv").set_index("id_cliente")
 
 
+# ── Búsqueda por nombre ─────────
+# El CSV trae el nombre de cada cliente (inventado). Para buscar sin que una tilde
+# estorbe, guardamos una versión del nombre en minúsculas y sin tildes: "María" -> "maria"
+def sin_tildes(texto):
+    texto = unicodedata.normalize("NFD", texto.lower())
+    letras = []
+    for letra in texto:
+        # Las tildes quedan como marcas aparte (categoría "Mn"); esas se descartan
+        if unicodedata.category(letra) != "Mn":
+            letras.append(letra)
+    return "".join(letras)
+
+
+historial["nombre_busqueda"] = historial["nombre"].apply(sin_tildes)
+
+
 # ── Entrada del modelo: solicitud + historial ─────────
 def prepara_entrada(solicitudes):
     filas = []
+    #por cada
     for solicitud in solicitudes:
         if solicitud.id_cliente not in historial.index:
             raise HTTPException(
@@ -36,9 +57,9 @@ def prepara_entrada(solicitudes):
             )
 
         # Los cinco datos de la solicitud + los ocho del historial
-        fila = solicitud.model_dump()
+        fila = solicitud.model_dump() #los dumpea
+        #como to json, mezcla en el diccionario todas las columnas juntas y las prepara
         fila.update(historial.loc[solicitud.id_cliente, COLUMNAS_HISTORIAL].to_dict())
-
         # El modelo aprendió el plazo como texto con un espacio delante: " 36 months"
         fila["num_cuotas"] = " " + str(solicitud.num_cuotas) + " months"
         filas.append(fila)
@@ -56,8 +77,10 @@ def health():
     return {"status": "OK"}
 
 
-# La app llama aquí para llenar su selector de clientes
-@app.get("/clientes")
+# Lista completa de ids. Es solo de demo: con 200.000 clientes sería inviable,
+# por eso existe la búsqueda de abajo.
+# dependencies=[Depends(verifica_clave)] exige la clave X-API-Key (si hay una configurada)
+@app.get("/clientes", dependencies=[Depends(verifica_clave)])
 def clientes():
     # Solo enviamos los ids, nunca el historial del cliente
     ids = []
@@ -66,8 +89,36 @@ def clientes():
     return {"ids": ids}
 
 
-# Ficha del cliente: lo que el banco ya sabe de él (en la demo, datos ficticios)
-@app.get("/clientes/{id_cliente}")
+# Búsqueda por nombre, paginada: la app escribe unas letras y recibe pocos resultados.
+# Va ANTES de "/clientes/{id_cliente}", si no FastAPI leería "buscar" como un id.
+@app.get("/clientes/buscar", dependencies=[Depends(verifica_clave)])
+def busca_clientes(
+    q: str = Query("", max_length=50),
+    pagina: int = Query(1, ge=1),
+    tamano: int = Query(10, ge=1, le=50),
+):
+    # Se queda con los clientes cuyo nombre contiene el texto buscado
+    coincidencias = historial[
+        historial["nombre_busqueda"].str.contains(sin_tildes(q.strip()), regex=False)
+    ]
+
+    # Paginación: se devuelve solo el trozo pedido
+    inicio = (pagina - 1) * tamano
+    trozo = coincidencias.iloc[inicio : inicio + tamano]
+
+    resultados = []
+    for id_cliente, fila in trozo.iterrows():
+        resultados.append({"id_cliente": int(id_cliente), "nombre": str(fila["nombre"])})
+    return {
+        "total": int(len(coincidencias)),
+        "pagina": pagina,
+        "tamano": tamano,
+        "resultados": resultados,
+    }
+
+
+# Ficha del cliente: lo que el banco ya sabe de él (en la demo, datos de una base pública)
+@app.get("/clientes/{id_cliente}", dependencies=[Depends(verifica_clave)])
 def ficha_cliente(id_cliente: int):
     if id_cliente not in historial.index:
         raise HTTPException(
@@ -78,6 +129,7 @@ def ficha_cliente(id_cliente: int):
     datos = historial.loc[id_cliente]
     return {
         "id_cliente": id_cliente,
+        "nombre": str(datos["nombre"]),
         "ingresos": float(datos["ingresos"]),
         "ingresos_verificados": str(datos["ingresos_verificados"]),
         "rating": str(datos["rating"]),
@@ -88,8 +140,8 @@ def ficha_cliente(id_cliente: int):
         "num_derogatorios": int(datos["num_derogatorios"]),
     }
 
-
-@app.post("/predict", response_model=list[ScoringSalida])
+#El resto es la respuesta cuando alguien haga el post, desde donde sea
+@app.post("/predict", response_model=list[ScoringSalida], dependencies=[Depends(verifica_clave)])
 def predict(solicitudes: list[RegistroEntrada]):
     datos = prepara_entrada(solicitudes)
 

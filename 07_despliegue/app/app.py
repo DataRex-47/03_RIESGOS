@@ -9,6 +9,9 @@
 import os
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
+# Clave de la API (opcional): solo se envía si la variable API_KEY existe.
+# Se queda en el servidor de la app, nunca llega al navegador.
+CLAVE_API = os.environ.get("API_KEY", "")
 TIMEOUT = 60  # Segundos máximos para cada llamada
 ESPERA_MAXIMA = 120  # Segundos máximos esperando que la API despierte
 
@@ -46,6 +49,7 @@ FINALIDADES = {
 
 import time
 from pathlib import Path
+from urllib.parse import quote
 
 import plotly.graph_objects as go
 import requests
@@ -81,13 +85,22 @@ def despierta_api():
 
 def llama_api(metodo, ruta, datos=None):
     # Devuelve (respuesta, error). Si todo sale bien, error es None
+    # Si hay clave configurada, viaja en la cabecera X-API-Key
+    cabeceras = {}
+    if CLAVE_API:
+        cabeceras["X-API-Key"] = CLAVE_API
+
     try:
-        respuesta = requests.request(metodo, API_BASE_URL + ruta, json=datos, timeout=TIMEOUT)
+        respuesta = requests.request(
+            metodo, API_BASE_URL + ruta, json=datos, headers=cabeceras, timeout=TIMEOUT
+        )
     except requests.ConnectionError:
         return None, "No hay conexión con el servicio. Revisa que la API esté encendida."
     except requests.Timeout:
         return None, "El servicio tardó demasiado en responder. Inténtalo de nuevo."
 
+    if respuesta.status_code == 401:
+        return None, "La API no aceptó la clave de acceso. Revisa la variable API_KEY de la app."
     if respuesta.status_code == 404:
         return None, respuesta.json()["detail"]
     if respuesta.status_code == 422:
@@ -104,17 +117,20 @@ def calcula(registros):
         return llama_api("POST", "/predict", registros)
 
 
-def carga_clientes():
-    # La API solo manda los ids; se piden una vez y se guardan
-    if "ids" not in st.session_state:
+def busca_clientes(texto):
+    # Pide a la API los clientes cuyo nombre contiene el texto (máximo 20 por página).
+    # Con el texto vacío la API devuelve los primeros 20.
+    # La primera vez, además, despierta la API (Render duerme el servicio gratuito)
+    if "api_despierta" not in st.session_state:
         with st.spinner("Conectando con el servicio. Si estaba dormido, puede tardar hasta un minuto."):
             despierta_api()
-            datos, error = llama_api("GET", "/clientes")
-        if error:
-            st.error(error)
-            st.stop()
-        st.session_state["ids"] = datos["ids"]
-    return st.session_state["ids"]
+        st.session_state["api_despierta"] = True
+
+    datos, error = llama_api("GET", "/clientes/buscar?tamano=20&q=" + quote(texto.strip()))
+    if error:
+        st.error(error)
+        st.stop()
+    return datos["resultados"], datos["total"]
 
 
 def carga_ficha(id_cliente):
@@ -214,8 +230,9 @@ def dibuja_cabecera():
 
 
 # ── Pantalla: formulario ─────────
-def etiqueta_cliente(id_cliente):
-    return "Cliente " + str(id_cliente)
+def etiqueta_cliente(cliente):
+    # Cada cliente llega de la búsqueda como {"id_cliente": ..., "nombre": ...}
+    return cliente["nombre"] + " (" + str(cliente["id_cliente"]) + ")"
 
 
 def texto_antiguedad(texto):
@@ -255,14 +272,25 @@ def dibuja_ficha(ficha):
     st.markdown(filas, unsafe_allow_html=True)
 
 
-def dibuja_formulario(ids):
+def dibuja_formulario():
     col_cliente, col_solicitud = st.columns([4, 6], gap="large")
 
     with col_cliente:
         with st.container(border=True):
-            st.markdown("<div class='seccion'>Cliente del banco</div>", unsafe_allow_html=True)
-            id_cliente = st.selectbox("Cliente", ids, format_func=etiqueta_cliente)
-            st.caption("Se evalúan clientes que ya tienen historial en el banco (datos ficticios de demostración).")
+            st.markdown("<div class='seccion'>Cliente con perfil registrado</div>", unsafe_allow_html=True)
+            texto = st.text_input("Buscar por nombre", placeholder="Por ejemplo: maria")
+            clientes, total = busca_clientes(texto)
+            if not clientes:
+                st.warning("Ningún cliente coincide con esa búsqueda.")
+                st.stop()
+            cliente = st.selectbox("Cliente", clientes, format_func=etiqueta_cliente)
+            if total > len(clientes):
+                st.caption(f"Se muestran {len(clientes)} de {total} coincidencias. Escribe más letras para acotar.")
+            st.caption(
+                "La demo busca el perfil del solicitante en una base de ejemplo: los perfiles son de una base "
+                "pública de préstamos y los nombres son inventados. En la vida real vendría del formulario y de la central de riesgo."
+            )
+            id_cliente = cliente["id_cliente"]
             dibuja_ficha(carga_ficha(int(id_cliente)))
 
     with col_solicitud:
@@ -533,9 +561,8 @@ else:
     st.set_page_config(page_title="Bancandrex", layout="wide")
 aplica_estilos()
 dibuja_cabecera()
-ids = carga_clientes()
 
-solicitud, evaluar = dibuja_formulario(ids)
+solicitud, evaluar = dibuja_formulario()
 if evaluar:
     datos, error = calcula([arma_registro(solicitud, solicitud["num_cuotas"])])
     st.session_state["evaluacion"] = (solicitud, datos, error)
@@ -558,3 +585,4 @@ with st.expander("¿Cómo se calcula la tasa sugerida?"):
 with st.expander("Para el equipo técnico"):
     st.write("API en uso: " + API_BASE_URL)
     st.write("En Render, la variable de entorno API_BASE_URL debe tener la URL pública de la API.")
+    st.write("Si la API tiene clave activada, la app la envía desde la variable de entorno API_KEY (opcional).")

@@ -123,6 +123,6 @@ Los tres están en `02_datos/03_Entrenamiento/`. EAD y LGD conservan `target_pd`
 
 ## 8. Pendientes
 
-- 100 préstamos con `ingresos` igual a 0, que siguen sin tratar.
-- Anotar el motivo de dejar fuera `num_hipotecas`, `porc_tarjetas_75p` y `num_cancelaciones_12meses`.
+- 100 préstamos con `ingresos` igual a 0 (0,07 %): su tasa de impago es 3,0 % contra 11,9 % del total, así que casi seguro el 0 es un código de dato faltante y no un ingreso real. Decisión del 02/11/2026: se dejan como están y se documenta. El efecto en los modelos es despreciable. Si algún día se tratan, lo correcto es pasarlos a nulo e imputar.
+- `num_hipotecas`, `porc_tarjetas_75p` y `num_cancelaciones_12meses` quedan fuera: la plantilla de transformación no las incluyó y no había un motivo de fondo. Se probaron el 02/11/2026 y no mejoran ningún modelo (detalle en el informe de preselección).
 - Si el modelo lo necesita, quitar una categoría por variable en el OHE.

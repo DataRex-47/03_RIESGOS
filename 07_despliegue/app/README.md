@@ -1,12 +1,12 @@
 # Bancandrex, Mesa de decisión de crédito (app Streamlit)
 
-App para que un analista elija un **cliente que ya existe en el banco**, vea su ficha, simule un préstamo y obtenga el nivel de riesgo, la probabilidad de impago, la pérdida esperada, la **tasa sugerida** y una comparación entre 36 y 60 meses. La app no tiene lógica de Machine Learning: pide todo a la API.
+App para que un analista busque por nombre un **cliente con perfil registrado**, vea su ficha, simule un préstamo y obtenga el nivel de riesgo, la probabilidad de impago, la pérdida esperada, la **tasa sugerida** y una comparación entre 36 y 60 meses. La app no tiene lógica de Machine Learning: pide todo a la API.
 
 ## Qué se ve en la pantalla
 
 | Zona | Contenido |
 |---|---|
-| Cliente del banco | Selector de cliente y su ficha: rating, ingresos, verificación, DTI, antigüedad, líneas de crédito, uso rotativo y reportes negativos. Son datos ficticios de demostración |
+| Cliente con perfil registrado | Buscador por nombre (sin importar tildes) con selector, y su ficha: rating, ingresos, verificación, DTI, antigüedad, líneas de crédito, uso rotativo y reportes negativos. Son perfiles de una base pública de préstamos con nombres inventados |
 | Solicitud de préstamo | Monto (500 a 40.000), plazo (36 o 60 meses), finalidad y situación de vivienda |
 | Resultado | Semáforo (bajo, medio, alto), pérdida esperada, tasa sugerida, medidor de la PD, barras de EAD y LGD y cascada de la pérdida esperada |
 | Comparar plazos | Las mismas cifras a 36 y a 60 meses, lado a lado |
@@ -73,6 +73,7 @@ En el plan gratuito Render duerme el servicio. La primera consulta puede tardar 
 
 ## Límites que conviene conocer
 
-- Los clientes son ficticios y ya existen en el historial de demostración. La app no registra clientes nuevos.
+- Los perfiles son de una base pública de préstamos y los nombres son inventados. La app no registra clientes nuevos.
+- Si la API tiene clave (`API_KEY`), la app la envía desde su propia variable de entorno `API_KEY`. En la demo pública está apagada.
 - Los plazos son solo 36 y 60 meses porque los datos de entrenamiento no tienen otros.
 - El EAD y el LGD son casi constantes (66 % y 89 %): el que ordena el riesgo es la PD, con un AUC cercano a 0,70.

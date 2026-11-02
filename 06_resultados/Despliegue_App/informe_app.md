@@ -6,7 +6,7 @@ Actualizado el 31/10/2026: la tasa deja de ser un control y pasa a ser un result
 
 | Paso | Archivo | Qué hace | Qué produce |
 |---|---|---|---|
-| 1 | `app.py` (`carga_clientes`) | Al abrir, pide `GET /clientes` y guarda la lista | Los ids del selector |
+| 1 | `app.py` (`busca_clientes`) | Pide `GET /clientes/buscar` con el texto que escribe el analista, hasta 20 resultados | Los clientes del selector |
 | 2 | `app.py` (`carga_ficha`) | Pide `GET /clientes/{id}` al elegir un cliente | La ficha: lo que el banco ya sabe de él |
 | 3 | `app.py` (`dibuja_formulario`) | El analista elige cliente, monto, plazo, finalidad y vivienda | Una solicitud con cinco campos |
 | 4 | `app.py` (`despierta_api`, `llama_api`) | Despierta la API con `/health` y envía `POST /predict` con `[solicitud]` | La respuesta de la API |
@@ -32,8 +32,8 @@ La pregunta que responde la app es: **¿qué pasa si le prestamos esto a este cl
 
 | Elemento de la app | Qué envía a la API o qué muestra | De dónde sale el dato |
 |---|---|---|
-| Cliente | Envía `id_cliente` | Lista de `GET /clientes` |
-| Ficha del cliente | Rating, ingresos anuales, verificación de ingresos, DTI, antigüedad, líneas de crédito, uso rotativo y reportes negativos | `GET /clientes/{id}`. Son datos ficticios de demostración |
+| Cliente | Envía `id_cliente`. El analista escribe parte del nombre y elige de la lista | `GET /clientes/buscar` |
+| Ficha del cliente | Rating, ingresos anuales, verificación de ingresos, DTI, antigüedad, líneas de crédito, uso rotativo y reportes negativos | `GET /clientes/{id}`. Son perfiles de una base pública de préstamos, con nombres inventados |
 | Monto del préstamo | Envía `principal`, de 500 a 40.000 | El analista |
 | Plazo | Envía `num_cuotas`, 36 o 60 | El analista |
 | Para qué es el préstamo | Envía `finalidad` | El analista, 14 opciones del contrato |
@@ -68,6 +68,8 @@ La pregunta que responde la app es: **¿qué pasa si le prestamos esto a este cl
 | Prueba | Resultado |
 |---|---|
 | `GET /health`, `GET /clientes` y `GET /clientes/{id}` | 200; 50 ids; ficha completa |
+| App con búsqueda por nombre (02/11/2026, prueba automática y navegador Chromium) | Abre con 20 clientes; "gomez" deja 5; un texto sin coincidencias muestra un aviso y detiene la pantalla; evaluar funciona sin excepciones |
+| App contra una API con clave | Sin `API_KEY` en la app muestra "La API no aceptó la clave de acceso"; con la misma clave funciona |
 | `POST /predict` con `test_payload.json` | 200; pérdida esperada 297,41 y tasa sugerida 5,66 % para 15.000 a 36 meses |
 | App: cargar, evaluar y comparar (prueba automática de Streamlit) | Sin excepciones; tasa sugerida visible en el banner y en las dos tarjetas de plazo |
 | App en navegador Chromium, con capturas | Se ve y funciona, incluidas la ficha, la leyenda y el aviso de datos cambiados |

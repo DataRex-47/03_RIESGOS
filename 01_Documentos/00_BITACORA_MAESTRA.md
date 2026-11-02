@@ -53,6 +53,11 @@ status: 🌱 (Seed)
 | Qué hacer con la tasa (31/10) | Sale de los modelos y de la entrada. La API la devuelve como `tasa_sugerida` = fondeo + costos + margen + pérdida esperada anual. Los modelos se reentrenaron sin `tipo_interes` ni `imp_cuota` |
 | Ficha del cliente (31/10) | Ruta `GET /clientes/{id}` y tarjeta en la app. El cliente ya existe en el banco |
 | Formato de `num_cuotas` | La API lo pasa al modelo como categoría (" 36 months") |
+| Framing del cliente (02/11) | Es un perfil registrado, no un cliente recurrente: la base tiene un préstamo por persona. El id solo trae la fila, no es predictora. Con el mismo modelo se puntuaría a un solicitante nuevo si su perfil llegara de la central de riesgo |
+| Búsqueda y clave (02/11) | Ruta `GET /clientes/buscar` con nombres inventados y clave opcional `API_KEY`, apagada en la demo. Probadas en local con y sin clave |
+| LGD (02/11) | Se mantiene el modelo y se documenta que equivale a una constante. Los ceros de recuperación (31,4 %) pueden ser recuperación aún no registrada: no se puede comprobar sin fechas |
+| Variables fuera del modelo (02/11) | `num_hipotecas`, `porc_tarjetas_75p` y `num_cancelaciones_12meses` siguen fuera: se probaron y no aportan |
+| 100 préstamos con ingresos 0 (02/11) | Se dejan y se documentan (posible código de dato faltante, efecto despreciable) |
 
 
 ---
@@ -263,4 +268,5 @@ A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 B
 * Leer la normativa de Basilea (matiz entre pérdida esperada y capital regulatorio, ver `Riesgo_y_Banca/Basilea_y_Crisis_2008.md`).
 * Proyecto pequeño sobre `empleo` y `descripcion`: normalizar el texto y agrupar los empleos en categorías, a ver si dan variables útiles.
 * Llevar a `docs/` y a `Recursos-Assets` los diagramas de ChatGPT (vida real frente a simulación, y cómo se consume la API). Los de flujo app, API y modelo y el glosario de schemas se rehicieron el 31/10 (sin tasa ni cuota): están en `docs/` y falta copiarlos a `Recursos-Assets`.
-* Los 100 préstamos con `ingresos` igual a 0 y el motivo de dejar fuera `num_hipotecas`, `porc_tarjetas_75p` y `num_cancelaciones_12meses`.
+* Camino Docker de la API y la app: opcional, para después del cierre (variante en los agentes A_11 y A_12).
+* Si se activa `API_KEY` en Render, crearla en los dos servicios (API y app).

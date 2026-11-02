@@ -161,6 +161,16 @@ Por qué el objetivo es un porcentaje y no un importe: así el modelo no puede p
 | Error medio sobre el real medio | 23,3 % |
 | Reporting | `reporting_regresion()`: nube de real contra predicho y densidades |
 
+**Contra un valor fijo** (validación de 4.965 préstamos, la misma del notebook):
+
+| Referencia | MAE |
+|---|---|
+| La mediana del entrenamiento para todos | 0,173 |
+| La media del entrenamiento para todos | 0,178 |
+| Ridge sin tasa | **0,162** |
+
+El modelo gana por cerca de 0,011 (un 6 %): es una mejora modesta pero real. La explica sobre todo el plazo: a 36 meses el EAD real medio es 0,64 y a 60 meses 0,78. El resto depende de cuánto había pagado el cliente antes de fallar, y eso no se sabe al conceder el préstamo.
+
 ## 7. Modelo LGD: qué se hizo
 
 | Paso | Qué se hizo | Resultado |
@@ -204,7 +214,39 @@ Por rating:
 
 **Conclusión:** con las variables disponibles al conceder el préstamo no se puede explicar cuánto se recupera después de un impago. En la práctica, el modelo de LGD equivale a asignar un valor fijo cercano al 89 %. Es un límite de los datos, no un fallo de programación, y es habitual: en la banca el LGD se trabaja a menudo con valores fijos por segmento.
 
-**Hipótesis:** que en los datos el LGD se haya fijado por política de riesgo, con base en la experiencia y la prudencia del banco, o a partir de información de burós de crédito (según el consultor), en lugar de medirse caso a caso. Sería coherente con que casi no varíe entre clientes y con un banco de enfoque tradicional. No se puede comprobar con estos datos.
+### Qué hay detrás: lo recuperado sobre lo pendiente (02/11/2026)
+
+El LGD se calcula como 1 menos lo recuperado dividido entre lo pendiente, así que el comportamiento del LGD es el de `imp_recuperado`. Se miró lo recuperado como porcentaje de lo pendiente en los 16.549 impagos del entrenamiento:
+
+| Recuperado sobre lo pendiente | % de los impagos |
+|---|---|
+| Exactamente 0 | 31,4 |
+| 0 a 5 % | 7,5 |
+| 5 a 10 % | 7,8 |
+| 10 a 15 % | 35,4 |
+| 15 a 20 % | 5,9 |
+| 20 a 30 % | 5,5 |
+| 30 a 50 % | 4,6 |
+| Más de 50 % | 2,0 |
+
+![Lo recuperado sobre lo pendiente, por tramos](lgd_recuperado_tramos.png)
+
+| Hallazgo | Lectura |
+|---|---|
+| Hay dos picos | 31,4 % no recupera nada y 35,4 % recupera entre 10 y 15 % de lo pendiente |
+| No depende del monto | La relación entre lo recuperado sobre lo pendiente y lo pendiente es 0,0. En dólares sí hay relación (0,45), pero solo porque los montos grandes dejan más pendiente |
+| Se repite igual por plazo | 31 % de ceros tanto a 36 como a 60 meses; la mediana recuperada es 10,2 % y 10,4 % |
+| Casi no cambia con el rating | Los ceros van de 41 % en el rating A a 25 % en F y G |
+
+**En cristiano.** Un tercio de los impagos no recupera nada y otro tercio recupera casi lo mismo. El modelo no logra distinguir quién cae en cada grupo, así que predice el promedio de todos: se recupera cerca de 11 % y el LGD sale en 0,89. Es la regresión a la media: ante la duda, el promedio es la mejor apuesta. Por eso sobrestima la recuperación en quien no recupera nada (unos 11 puntos de error) y la subestima en el pequeño grupo que recupera más del 30 % (20 puntos de error o más).
+
+| ¿Es grave? | Lectura |
+|---|---|
+| Para la cartera | Poco: el promedio del modelo coincide con el real y los errores se compensan. La pérdida esperada es un promedio |
+| Por préstamo | El LGD vive en una banda estrecha (87,6 % entre 0,8 y 1), así que el error absoluto es pequeño frente al de la PD y el EAD |
+| Como modelo | No aporta nada sobre una constante (0,0885 contra 0,0879). Lo que sostiene el sistema es la PD, con AUC cercano a 0,70. Si dependiera solo de EAD y LGD, sería un mal modelo |
+
+**Hipótesis, sin comprobar.** El patrón parece una regla o un proceso estándar de recuperación sobre lo pendiente, y por eso casi no varía con el cliente. Los ceros también podrían ser recuperaciones que aún no se habían registrado al cortar los datos. No se puede comprobar porque la base no trae ninguna fecha, y quien use estos números debe saber que el 31 % de ceros puede estar inflado por esa razón.
 
 ![Real contra predicho LGD](grafico_real_vs_pred_lgd.png)
 

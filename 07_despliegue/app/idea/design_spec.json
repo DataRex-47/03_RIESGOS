@@ -1,6 +1,6 @@
 {
   "nombre_app": "Bancandrex Mesa de Decisión de Crédito",
-  "idea_en_una_linea": "Un analista elige un cliente que ya existe en el banco, ve su ficha, simula un préstamo y ve en segundos si conviene, cuánto se podría perder y a qué tasa aprobarlo. Además compara 36 contra 60 meses con un solo clic.",
+  "idea_en_una_linea": "Un analista busca por nombre un cliente con perfil registrado, ve su ficha, simula un préstamo y ve en segundos si conviene, cuánto se podría perder y a qué tasa aprobarlo. Además compara 36 contra 60 meses con un solo clic.",
   "branding": {
     "logo": "assets/logo_bancandrex.png",
     "logo_ancho": 300,
@@ -38,7 +38,7 @@
       "etiqueta": "Cliente",
       "campo_api": "id_cliente",
       "valores": "ids de demo_clientes.csv",
-      "decision": "Decidido: la API expone GET /clientes con los ids y GET /clientes/{id} con la ficha. La app no tiene copia del CSV. El cliente ya existe en el banco: la app no da de alta clientes nuevos."
+      "decision": "Decidido: la API expone GET /clientes con los ids y GET /clientes/{id} con la ficha. La app no tiene copia del CSV. El cliente se busca por nombre con GET /clientes/buscar (02/11/2026). La app no da de alta clientes nuevos."
     },
     "principal": {
       "widget": "slider",
@@ -241,7 +241,7 @@
         "Uso rotativo",
         "Reportes negativos"
       ],
-      "aviso": "Datos ficticios de demostración."
+      "aviso": "Perfiles de una base pública de préstamos, con nombres inventados."
     }
   },
   "pestana_comparar_plazos": {

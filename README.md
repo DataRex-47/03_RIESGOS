@@ -21,7 +21,7 @@ Hay tres modelos de Machine Learning (uno por pieza), una API (FastAPI) que los 
 
 ## Qué hace la app
 
-El analista elige **un cliente que ya existe en el banco**, ve su ficha, indica cuánto quiere prestar y a qué plazo, y la app responde:
+El analista busca por nombre **un cliente con perfil registrado**, ve su ficha, indica cuánto quiere prestar y a qué plazo, y la app responde:
 
 | Resultado | Para qué sirve |
 |---|---|
@@ -43,13 +43,13 @@ La app no tiene lógica de Machine Learning: todo lo calcula la API.
 
 | Tema | Qué se decidió | Por qué |
 |---|---|---|
-| El cliente ya existe | La app evalúa clientes con historial en el banco. No da de alta clientes nuevos | El historial (ingresos, rating, endeudamiento) es lo que alimenta los modelos |
-| Datos ficticios | El historial de la demo es un CSV con 50 clientes ficticios dentro de la API | En la vida real vendría de una base de datos protegida del banco |
+| Perfil registrado | La demo busca el perfil del solicitante en una base de ejemplo. No da de alta clientes | El modelo no usa el id como predictora: solo trae la fila con el perfil (ingresos, rating, endeudamiento). En la vida real ese perfil saldría del formulario y de la central de riesgo, y el mismo modelo serviría a alguien que nunca prestó en el banco. No sirve para quien nunca tuvo ningún crédito |
+| Datos de ejemplo | Los perfiles de la demo son 50 filas de la base pública de préstamos, con nombres inventados, dentro de la API | En la vida real vendrían de una base de datos protegida del banco |
 | Monto | De 500 a 40.000 | Es el rango que vio el modelo al entrenar; fuera de él no se puede confiar en la predicción |
 | Plazo | Solo 36 o 60 meses | Son los únicos plazos que existen en los datos (71 % a 36 y 29 % a 60) |
 | Ingresos altos | Un ingreso mayor a 400.000 se puntúa como si fuera 400.000 | Los ingresos extremos distorsionan el escalado; en el entrenamiento se descartaron esos 398 préstamos |
 | Vivienda | Se pide en la solicitud | El historial de la demo no la trae |
-| Rating | Viene en el historial | Es la nota de riesgo de agencias, existe antes del préstamo |
+| Rating | Viene en el perfil | Se asigna al solicitar el préstamo (no es fuga). Su correlación de 0,953 con la tasa indica que el banco la usó para fijar el precio |
 | Tipo de modelo | Adquisición | Solo usa variables que se conocen al conceder el préstamo |
 
 ## La tasa de interés: una decisión importante
@@ -104,6 +104,9 @@ Esta es una **primera prueba**, hecha para aprender y para mostrar el flujo comp
 |---|---|
 | AUC cercano a 0,70 | El modelo de PD separa discretamente a los buenos de los malos, no con mucha fuerza |
 | EAD y LGD casi constantes | Predicen valores cercanos a 66 % y 89 % para casi todos los clientes. El que ordena el riesgo es la PD |
+| LGD equivale a una constante | De cada 100 impagos, 31 no recuperan nada y 35 recuperan entre 10 y 15 % de lo pendiente. El modelo no distingue quién es quién y predice el promedio. El 0 podría ser recuperación aún no registrada, pero la base no trae fechas para comprobarlo |
+| Solo préstamos aprobados | Los rechazados no están en los datos: el modelo aprende solo de quienes recibieron el préstamo (sesgo de selección) |
+| Sin historial crediticio | Quien nunca tuvo ningún crédito no tiene el perfil que el modelo necesita; en banca se resuelve con otras reglas |
 | Datos con 2 plazos y un rango de monto | No se puede extrapolar a otros plazos ni montos |
 | Tasa sugerida con supuestos ilustrativos | No reemplaza una política de precios real y excluye la pérdida inesperada |
 | Cortes del semáforo | 8 % y 15 % son una propuesta; deben validarse con el criterio de negocio |
@@ -111,7 +114,7 @@ Esta es una **primera prueba**, hecha para aprender y para mostrar el flujo comp
 
 ## Aviso sobre datos
 
-El CSV de historial de la carpeta de la API contiene **datos ficticios de demostración**. Subir datos reales de clientes a un repositorio público no es aceptable: en producción el historial se consulta en una base de datos protegida. Los datos originales de entrenamiento y la reserva no se suben (ver `.gitignore`).
+El CSV de perfiles de la carpeta de la API contiene **filas de la base pública de entrenamiento con nombres inventados**: no son clientes reales. Subir datos reales de clientes a un repositorio público no es aceptable: en producción el historial se consulta en una base de datos protegida. Los datos originales de entrenamiento y la reserva no se suben (ver `.gitignore`).
 
 ## Estructura del repositorio
 
@@ -152,6 +155,10 @@ POST /predict
 ```
 
 Si se envía `tipo_interes` u otro campo no previsto, la API responde 422.
+
+**Búsqueda de clientes.** `GET /clientes/buscar?q=maria&tamano=10&pagina=1` devuelve las coincidencias por nombre, paginadas. La lista completa `GET /clientes` es solo de demostración.
+
+**Clave de acceso, opcional.** Si se define la variable de entorno `API_KEY`, todas las rutas menos `/health` exigen la cabecera `X-API-Key` (sin ella, 401). En la demo pública está apagada para que cualquiera pueda probarla; la app envía la clave si tiene su propia variable `API_KEY`.
 
 ## Cómo reentrenar y volver a puntuar
 

@@ -22,7 +22,7 @@ Un modelo de adquisición solo puede usar variables que existan cuando se conced
 |---|---|---|
 | `principal`, `num_cuotas`, `finalidad` | Sí | Predictoras |
 | `tipo_interes`, `imp_cuota` | Sí se conocen, pero **no se usan** (decisión del 31/10/2026) | La tasa la fija el banco según el riesgo del cliente, así que usarla para predecir ese riesgo es circular. Se devuelve como respuesta (tasa sugerida) |
-| `rating` | Sí, nota de riesgo según agencias | Predictora |
+| `rating` | Sí, se asigna al solicitar el préstamo. El diccionario la atribuye a agencias, y su correlación de 0,953 con la tasa indica que el banco la usó para fijar el precio | Predictora. No es fuga, pero en producción hay que poder obtenerla al decidir |
 | `ingresos`, `ingresos_verificados`, `vivienda`, `antiguedad_empleo` | Sí | Predictoras |
 | `dti`, `num_lineas_credito`, `porc_uso_revolving`, `num_derogatorios` | Sí, historial crediticio al pedir el préstamo | Predictoras |
 | `estado`, `imp_amortizado`, `imp_recuperado`, `pendiente` | No, ocurren después de conceder | Solo para crear las variables objetivo |
@@ -42,6 +42,8 @@ Con esto, las 27 predictoras de los tablones cumplen la regla.
 
 Este caso es de **adquisición**, aunque use LightGBM. La comparación justa de un modelo así es contra no tener modelo (la política actual), no contra uno de comportamiento o de marketing, que cuentan con años de historial. Más detalle en el vault: `Riesgo_y_Banca/Modelos_Adquisicion_vs_Comportamiento.md`.
 
+Un modelo de comportamiento necesita una tabla de cuotas y pagos por cliente y por mes (fechas, saldo, días de atraso). Esta base tiene una fila por préstamo y ninguna fecha, así que no se puede construir. Además, `id_cliente` es único en las 200.000 filas: nadie aparece con dos préstamos.
+
 ## 4. Qué recibe la modelización
 
 | Modelo | Tablón | Filas | Objetivo | Quitar de las predictoras |
@@ -49,3 +51,17 @@ Este caso es de **adquisición**, aunque use LightGBM. La comparación justa de 
 | PD | `df_tablon_pd.pkl` | 139.602 | `target_pd` | Solo el objetivo |
 | EAD | `df_tablon_ead.pkl` | 16.549 | `target_ead` | `target_pd` y el objetivo |
 | LGD | `df_tablon_lgd.pkl` | 16.549 | `target_lgd` | `target_pd` y el objetivo |
+
+## 5. Variables que se dejaron fuera: prueba del 02/11/2026
+
+Se probó añadirlas a los tres modelos, con validación cruzada de 5 particiones sobre el 70 % de entrenamiento y el mismo preprocesamiento de producción.
+
+| Variables añadidas | AUC de la PD | MAE del EAD | MAE del LGD |
+|---|---|---|---|
+| Ninguna (la base actual) | 0,6976 | 0,1620 | 0,0887 |
+| `num_hipotecas` (tope en 7) | 0,6976 | 0,1620 | 0,0887 |
+| `porc_tarjetas_75p` | 0,6977 | 0,1620 | 0,0887 |
+| `num_cancelaciones_12meses` | 0,6976 | 0,1620 | 0,0887 |
+| Las tres | 0,6977 | 0,1621 | 0,0887 |
+
+**Lectura:** no aportan. Las diferencias son diez veces menores que el ruido (±0,005). Se mantienen fuera: no mejoran los modelos, y cada una sería un campo más en el contrato de la API (con 2,2 % de nulos en hipotecas y 3,3 % en tarjetas_75p).

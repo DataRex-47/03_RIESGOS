@@ -4,7 +4,7 @@ Actualizado el 31/10/2026: `tipo_interes` e `imp_cuota` ya no son entradas. La t
 
 ## Entrada desde la app (la solicitud)
 
-- `id_cliente`: cliente que ya existe en el banco
+- `id_cliente`: identificador del cliente con perfil registrado. Es solo la llave que trae el perfil, no una variable del modelo
 - `principal`: entre 500 y 40.000
 - `num_cuotas`: 36 o 60 (los únicos plazos que hay en los datos)
 - `finalidad`
@@ -37,4 +37,4 @@ Cualquier otro campo, por ejemplo `tipo_interes`, se rechaza con error 422.
 
 - `main.py` busca `id_cliente` en `API/demo_clientes.csv` y combina las ocho variables de historial con los cinco datos de la solicitud.
 - El archivo de historial incluido en `API/` es una copia de `07_despliegue/demo_clientes.csv` para que los datos requeridos queden dentro de la raíz desplegable del servicio.
-- `GET /clientes` entrega solo los ids y `GET /clientes/{id}` entrega la ficha (nunca se publica el CSV completo).
+- `GET /clientes` entrega solo los ids (solo de demostración), `GET /clientes/buscar` busca por nombre con resultados paginados y `GET /clientes/{id}` entrega la ficha (nunca se publica el CSV completo).

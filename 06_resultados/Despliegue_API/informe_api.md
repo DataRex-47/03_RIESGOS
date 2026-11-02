@@ -19,9 +19,19 @@ Actualizado el 31/10/2026: la tasa de interés ya no es una entrada, es una resp
 | Ruta | Para qué sirve | Respuesta |
 |---|---|---|
 | `GET /health` | Comprobar que el servicio está vivo | `{"status": "OK"}` |
-| `GET /clientes` | Llenar el selector de la app | `{"ids": [...]}`, solo identificadores |
-| `GET /clientes/{id_cliente}` | Ficha del cliente: lo que el banco ya sabe de él | Ingresos, verificación, rating, DTI, antigüedad, líneas de crédito, uso rotativo y reportes negativos. 404 si no existe |
+| `GET /clientes` | Lista completa de ids. Solo de demostración: con 200.000 clientes sería inviable | `{"ids": [...]}`, solo identificadores |
+| `GET /clientes/buscar?q=&pagina=&tamano=` | Buscar clientes por nombre, sin importar mayúsculas ni tildes, con resultados paginados | `{"total", "pagina", "tamano", "resultados": [{"id_cliente", "nombre"}]}`. `tamano` de 1 a 50 y `q` de hasta 50 letras; si no se cumple, 422 |
+| `GET /clientes/{id_cliente}` | Ficha del cliente: lo que el banco ya sabe de él | Nombre, ingresos, verificación, rating, DTI, antigüedad, líneas de crédito, uso rotativo y reportes negativos. 404 si no existe |
 | `POST /predict` | Puntuar una o varias solicitudes | Lista con los scores, la pérdida esperada y la tasa sugerida |
+
+### Clave de acceso, opcional (02/11/2026)
+
+| Situación | Qué pasa |
+|---|---|
+| Sin la variable de entorno `API_KEY` | La API queda abierta. Es el caso de la demo pública y del desarrollo local |
+| Con `API_KEY` definida | Todas las rutas menos `/health` exigen la cabecera `X-API-Key`. Si falta o no coincide, 401 |
+
+La lógica vive en `seguridad.py` (una función, `verifica_clave`, que cada ruta protegida declara con `dependencies=[Depends(verifica_clave)]`). La app envía la clave desde su propia variable `API_KEY`, que se queda en el servidor de la app y no llega al navegador. Es autenticación de un sistema, no de una persona: en un banco real se usaría OAuth2 o un API Gateway.
 
 ## 3. Cómo leer cada archivo
 
@@ -120,7 +130,7 @@ A 60 meses la pérdida esperada total es mayor (el EAD sube porque se debe más 
 
 ## 6. De dónde sale el historial
 
-`demo_clientes.csv` contiene datos ficticios y simula la consulta de historial por identificador; es adecuado para probar la demo y no representa clientes reales. Los clientes de la demo ya existen en el banco: la app no registra clientes nuevos.
+`demo_clientes.csv` simula la consulta del perfil de un solicitante. Sus 50 filas son perfiles tomados de la base pública de entrenamiento (36 del entrenamiento y 14 de la reserva), con **nombres inventados**; no son clientes reales. El id es solo la llave que trae la fila: no es una variable del modelo. En la vida real ese perfil saldría del formulario y de una consulta a la central de riesgo, y el mismo modelo serviría a alguien que nunca prestó en el banco. No sirve para quien nunca tuvo ningún crédito, porque no tendría perfil. Para esos 36 clientes de entrenamiento, el modelo puntúa personas que ya vio al entrenar, así que la demo luce un poco mejor de lo que debería.
 Si la API se adapta para puntuar clientes reales, el historial debe consultarse en una base de datos protegida; no debe usarse el CSV de entrenamiento. Subir datos reales de clientes a un repositorio público no es aceptable.
 
 ## 7. Qué se validó y qué no
@@ -131,6 +141,8 @@ Si la API se adapta para puntuar clientes reales, el historial debe consultarse 
 | `GET /health` local | HTTP 200, `status: OK`. |
 | `GET /clientes` y `GET /clientes/{id}` locales | 200; 50 ids; la ficha trae los ocho datos. |
 | `GET /clientes/{id}` con un id inexistente | 404. |
+| `GET /clientes/buscar` (02/11/2026): `q=maria` encuentra "Mariana" sin tilde, texto vacío devuelve los 50, `q=gómez` encuentra 5, símbolos raros no rompen, `tamano=500` y `q` de 80 letras dan 422, la página 2 de 20 devuelve 20 | Correcto. |
+| Clave de acceso con `API_KEY=secreta` (02/11/2026) | Sin clave y con clave mala, 401 en todas las rutas menos `/health`. Con la clave correcta, 200 y la misma respuesta de `/predict` (PD 0,0387). Sin `API_KEY` todo queda abierto. |
 | `POST /predict` local con `test_payload.json` | HTTP 200, una fila y las seis columnas documentadas. |
 | `POST /predict` con `tipo_interes` | HTTP 422, `Extra inputs are not permitted`. |
 | Comparación a 36 y 60 meses | Dos respuestas distintas y coherentes (sección 5). |
@@ -182,3 +194,4 @@ Configuración de Render indicada para el servicio. La URL respondió correctame
 1. El historial ficticio es adecuado para la demo; si se habilita scoring de clientes reales, conectarlo a una base de datos protegida.
 2. La API entrega scores y tasa sugerida sin semáforo; la lógica de umbrales corresponde a la app de Streamlit.
 3. Los supuestos de la tasa sugerida son ilustrativos; para un uso real hay que reemplazarlos por los de tesorería y añadir la pérdida inesperada.
+4. La clave está apagada en la demo pública. Si se activa en Render, `API_KEY` debe crearse en los dos servicios, la API y la app.
