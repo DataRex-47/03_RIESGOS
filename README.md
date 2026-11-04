@@ -78,6 +78,8 @@ tasa sugerida = costo de fondeo + costos operativos + margen + pérdida esperada
 | Margen | 1,3 % anual | Supuesto ilustrativo |
 | Pérdida esperada anual | `100 × pérdida esperada / principal / (plazo en años)` | Sale del modelo |
 
+El cálculo se presenta por solicitud, pero la pérdida esperada es una estimación promedio condicionada al perfil y al préstamo; no predice cuánto perderá el banco con certeza en ese caso individual. Por eso, la tasa sugerida debe interpretarse como un precio indicativo para ese perfil, no como una predicción del resultado de una persona. Al agregar una cartera, la pérdida esperada global se obtiene sumando las pérdidas esperadas y dividiendo por el principal total: es un promedio ponderado por exposición, no el promedio simple de los porcentajes individuales.
+
 Es una tasa **mínima** de ejemplo, no la política de un banco real: los tres supuestos son del autor y están como constantes en `07_despliegue/API/scoring.py`. No incluye la pérdida inesperada ni el capital que el banco debe reservar, ni compara con la competencia. Por eso para clientes de riesgo bajo da cerca de 5,7 %, por debajo de las tasas que aparecen en los datos históricos (5 % a 31 %). Un banco real la fijaría con tesorería y su política comercial.
 
 ## Los tres modelos y sus resultados
