@@ -57,18 +57,19 @@ Los ganadores no son exactamente los del notebook (por ejemplo ElasticNet con `C
 
 ## 4. Cómo leer `01_reentrenamiento.py`
 
-Se lee de arriba hacia abajo en seis bloques.
+Se lee de arriba hacia abajo en ocho pasos, sin saltos. El corazón es el paso 7.
 
-| Bloque | Qué hace | Para qué sirve |
+| Paso | Qué hace | Para qué sirve |
 |---|---|---|
-| Rutas y listas de columnas | Define rutas, estados de default y qué columnas reciben qué tratamiento | Es el único lugar que hay que tocar si cambian los datos |
-| Funciones de fila y de reglas | `prepara_datos` quita ingresos mayores a 400.000; `unifica_categorias` y `limita_numericas` aplican las reglas de 03 y 04 | Repite las decisiones del notebook como piezas reutilizables |
-| `crea_objetivos` | Calcula PD, EAD y LGD a partir de estado, principal, amortizado y recuperado | Solo se usa para entrenar y medir, nunca entra como variable del modelo |
-| `crea_preprocesador` | Cuatro tratamientos por grupo: One Hot a las categóricas, orden y escala a antigüedad y rating, recorte y escala a las numéricas, 0 o 1 a derogatorios | Se ajusta dentro de cada pipeline, así que cada pliegue aprende solo de su entrenamiento |
-| `crea_pipeline` y espacios de búsqueda | Une preprocesador y modelo base. PD prueba 18 combinaciones; EAD y LGD mezclan Ridge, Lasso e HistGradientBoosting y prueban 20 al azar | Es la lista de candidatos que compiten |
-| Reserva y bucle por modelo | Separa la reserva por `id_cliente`; para PD, EAD y LGD arma X e y, busca, mide en la reserva, reentrena con todo y guarda el `.pkl` | Es el corazón del script: las fases 1 y 2 |
+| 1 y 2. Rutas y listas de columnas | Define rutas, el interruptor `GUARDAR`, los estados de default y qué columnas reciben qué tratamiento | Es el único lugar que hay que tocar si cambian los datos |
+| 3. Dos funciones propias | `unifica_categorias` y `limita_numericas`, las reglas de 03 y 04 | Viajan dentro del modelo y se aplican igual a un cliente nuevo |
+| 4. Datos | Quita ingresos mayores a 400.000, calcula PD, EAD y LGD una sola vez y separa la reserva por `id_cliente` (se detiene si no la encuentra) | Los objetivos solo se usan para entrenar y medir, nunca entran como variable del modelo |
+| 5. `crea_preprocesador` | Cuatro tratamientos por grupo: One Hot a las categóricas, orden y escala a antigüedad y rating, recorte y escala a las numéricas, 0 o 1 a derogatorios | Se ajusta dentro de cada pipeline, así que cada pliegue aprende solo de su entrenamiento |
+| 6. La parrilla | `parametros_pd` (18 combinaciones) y `parametros_regresion` (Ridge, Lasso y árboles, 195 combinaciones de las que se prueban 20 al azar). Los árboles usan `loss` absolute_error | Es la lista de candidatos que compiten |
+| 7. Bucle por modelo | Para PD, EAD y LGD: elegir filas, buscar con validación cruzada, medir una sola vez en la reserva, reentrenar con todo y guardar el `.pkl` | Son las fases 1 y 2 del protocolo |
+| 8. Resumen | Tabla final con la nota de validación cruzada y la de la reserva | Lectura rápida del resultado |
 
-Dos detalles para recordar. EAD y LGD se entrenan solo con préstamos en default, y se aplican a todos los clientes al puntuar. Y el One Hot usa `drop='first'` y `handle_unknown='ignore'`, como pide el agente A_09, para evitar multicolinealidad y errores con categorías nuevas.
+Tres detalles para recordar. EAD y LGD se entrenan solo con préstamos en default, y se aplican a todos los clientes al puntuar. El One Hot usa `drop='first'` y `handle_unknown='ignore'`, como pide el agente A_09, para evitar multicolinealidad y errores con categorías nuevas. Y con la semilla 42 el sorteo de 20 candidatos en EAD y LGD contiene 19 combinaciones de árboles y una sola de Ridge (alpha 1); Lasso no entra. Una comparación a fondo entre familias pediría más iteraciones.
 
 ## 5. Cómo leer `02_produccion_scoring.py`
 
