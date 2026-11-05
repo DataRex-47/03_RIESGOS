@@ -204,11 +204,14 @@ A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 B
 | Modelo | Algoritmo | Métrica en la reserva |
 |---|---|---|
 | PD | Regresión logística ElasticNet (en el notebook, Lasso) | AUC 0,6979 |
-| EAD | Ridge | MAE 0,1647 |
-| LGD | HistGradientBoosting (en el notebook, Lasso) | MAE 0,0900 |
+| EAD | HistGradientBoosting con `loss` absolute_error (en el notebook, Ridge) | MAE 0,1610 |
+| LGD | HistGradientBoosting con `loss` absolute_error (en el notebook, Lasso) | MAE 0,0894 |
 
 > [!WARNING] Reentrenado el 31/10/2026 sin `tipo_interes` ni `imp_cuota`
-> Antes: AUC 0,7006, EAD 0,1588, LGD 0,0900 (con tasa y cuota). La tasa la fija el banco según el riesgo: usarla para predecir el riesgo es circular (correlación 0,953 con el rating y signo negativo en el Lasso). Quitarla costó casi nada (AUC de validación cruzada 0,7002 a 0,6976, ruido de ±0,005). Sin la tasa, los candidatos empatan: por eso gana un modelo lineal en EAD y el LGD sigue siendo casi constante (89 %).
+> Antes: AUC 0,7006, EAD 0,1588, LGD 0,0900 (con tasa y cuota). La tasa la fija el banco según el riesgo: usarla para predecir el riesgo es circular (correlación 0,953 con el rating y signo negativo en el Lasso). Quitarla costó casi nada (AUC de validación cruzada 0,7002 a 0,6976, ruido de ±0,005). Sin la tasa, los candidatos empatan en PD. El LGD sigue siendo casi constante (89 %).
+
+> [!NOTE] Reentrenado el 05/11/2026 con `loss="absolute_error"`
+> El HistGradientBoosting minimizaba el error cuadrático mientras se medía con MAE (su `scoring` solo decide cuándo parar, no qué minimiza). Se agregó `loss="absolute_error"` y se pasó a la versión del script con los cuatro pasos (`01_reentrenamiento_claro.py`). Resultado en la reserva: EAD de 0,1647 a 0,1610 y LGD de 0,0900 a 0,0894; la PD no cambia (AUC 0,6979). Los `.pkl` nuevos están en `07_despliegue`; falta copiarlos a `API/` y redesplegar.
 
 * El notebook 10 quita la reserva al cargar el CSV y trabaja solo con el 70 %. Su 70/30 interno solo comprueba que reproduce lo de 07, 08 y 09.
 * `01_reentrenamiento.py` busca hiperparámetros con validación cruzada, mide en la reserva y reentrena con todo. `02_produccion_scoring.py` puntúa con los tres artefactos y calcula la pérdida esperada.

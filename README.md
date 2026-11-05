@@ -31,6 +31,20 @@ El analista busca por nombre **un cliente con perfil registrado**, ve su ficha, 
 | **Tasa sugerida** | "Se puede aprobar desde X % anual" |
 | Comparación 36 contra 60 meses | Ver cuál plazo pierde menos |
 
+## Semáforo de riesgo: cortes de 8 % y 15 %
+
+<h2 align="center">Bajo: menos de 8 %. Medio: de 8 % a 15 %. Alto: más de 15 %.</h2>
+
+La app clasifica cada solicitud con la probabilidad de impago (PD) que devuelve la API.
+
+| Nivel | Probabilidad de impago | Préstamos de los 200.000 puntuados |
+|---|---|---|
+| Bajo | menor a **8 %** | 38 % |
+| Medio | de **8 %** a **15 %** | 37 % |
+| Alto | mayor a **15 %** | 25 % |
+
+Los dos cortes son constantes (`UMBRAL_BAJO` y `UMBRAL_ALTO`) al inicio de `07_despliegue/app/app.py`: si la política de riesgo es otra, se cambian ahí.
+
 ## Cómo funciona
 
 ![Cómo viaja un préstamo desde la app hasta el modelo](docs/flujo_app_api_modelo.png)
@@ -89,8 +103,8 @@ Datos: 200.000 préstamos. Se aparta el 30 % como reserva que no se toca hasta m
 | Modelo | Algoritmo | Resultado en la reserva | Lectura |
 |---|---|---|---|
 | PD | Regresión logística con regularización (Lasso o ElasticNet) | AUC 0,698 | Ordena el riesgo mejor que el azar: al revisar el 20 % de clientes más riesgosos se capturan el 40 % de los impagos (lift 2,0) |
-| EAD | Ridge | Error medio (MAE) 0,165 | Predice casi siempre entre 60 % y 75 %; sirve para el caso típico, no para los extremos |
-| LGD | Lasso o HistGradientBoosting | Error medio (MAE) 0,090 | Equivale a asignar un valor fijo cercano al 89 % |
+| EAD | HistGradientBoosting | Error medio (MAE) 0,161 | Predice casi siempre entre 60 % y 75 %; sirve para el caso típico, no para los extremos |
+| LGD | HistGradientBoosting | Error medio (MAE) 0,089 | Equivale a asignar un valor fijo cercano al 89 % |
 
 Todos los modelos son sencillos a propósito: con las variables que se conocen al conceder el préstamo, los modelos más complejos no mejoran el resultado.
 
@@ -111,7 +125,7 @@ Esta es una **primera prueba**, hecha para aprender y para mostrar el flujo comp
 | Sin historial crediticio | Quien nunca tuvo ningún crédito no tiene el perfil que el modelo necesita; en banca se resuelve con otras reglas |
 | Datos con 2 plazos y un rango de monto | No se puede extrapolar a otros plazos ni montos |
 | Tasa sugerida con supuestos ilustrativos | No reemplaza una política de precios real y excluye la pérdida inesperada |
-| Cortes del semáforo | 8 % y 15 % son una propuesta; deben validarse con el criterio de negocio |
+| Cortes del semáforo | 8 % y 15 % son los cortes definidos para este proyecto; cada banco los fija según su política de riesgo |
 | Clientes ficticios | La demo no usa datos reales de clientes |
 
 ## Aviso sobre datos

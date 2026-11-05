@@ -42,8 +42,8 @@ El script trabaja en dos fases por cada modelo. La fase 1 mide: busca hiperpará
 | Modelo | Mejores hiperparámetros | Validación cruzada | Reserva de 01 |
 |---|---|---|---|
 | PD, regresión logística ElasticNet | `l1_ratio` 0,5, `C` 0,25 | AUC 0,6972 | AUC 0,6979 |
-| EAD, Ridge | `alpha` 1 | MAE 0,1621 | MAE 0,1647 |
-| LGD, HistGradientBoosting | `learning_rate` 0,025, `max_depth` 5, `max_iter` 50, `l2_regularization` 0,5 | MAE 0,0887 | MAE 0,0900 |
+| EAD, HistGradientBoosting (`loss` absolute_error) | `learning_rate` 0,05, `max_depth` 20, `max_iter` 100, `l2_regularization` 0,5 | MAE 0,1592 | MAE 0,1610 |
+| LGD, HistGradientBoosting (`loss` absolute_error) | `learning_rate` 0,05, `max_depth` 20, `max_iter` 100, `l2_regularization` 1 | MAE 0,0881 | MAE 0,0894 |
 
 Los resultados en validación cruzada y en la reserva son casi iguales, así que no hay sobreajuste. La nota que se reporta de cada modelo es la de la reserva. El artefacto final se entrenó con todos los datos y ya no se puede evaluar con la reserva, porque ya la vio.
 
@@ -53,7 +53,7 @@ Los resultados en validación cruzada y en la reserva son casi iguales, así que
 | `artefacto_pipeline_ead.pkl` | 23.644 impagos |
 | `artefacto_pipeline_lgd.pkl` | 23.644 impagos |
 
-Los ganadores no son exactamente los del notebook (por ejemplo ElasticNet con `C` 0,25 en vez de Lasso con 0,05 en PD, y HistGradientBoosting en LGD en vez de Lasso). El script busca al azar entre 20 candidatos y mide con otra reserva, y sin la tasa las curvas son muy planas: los candidatos empatan dentro del ruido (±0,005 en AUC). Por eso cambiar de algoritmo no cambia el resultado. Antes de quitar la tasa, el AUC en reserva era 0,7006 y el MAE del EAD 0,1588; ahora son 0,6979 y 0,1647.
+Los ganadores no son exactamente los del notebook (por ejemplo ElasticNet con `C` 0,25 en vez de Lasso con 0,05 en PD, y HistGradientBoosting en EAD y LGD en vez de Ridge y Lasso). El script busca al azar entre 20 candidatos y mide con otra reserva, y sin la tasa las curvas son muy planas: los candidatos empatan dentro del ruido (±0,005 en AUC). Por eso en PD cambiar de algoritmo no cambia el resultado. Antes de quitar la tasa, el AUC en reserva era 0,7006 y el MAE del EAD 0,1588; ahora son 0,6979 y 0,1610. El 05/11 se agregó `loss="absolute_error"` al HistGradientBoosting (aprende minimizando el mismo MAE con el que se mide) y se reentrenó: el EAD pasó de 0,1647 a 0,1610 y el LGD de 0,0900 a 0,0894, y en ambos gana ese algoritmo.
 
 ## 4. Cómo leer `01_reentrenamiento.py`
 
