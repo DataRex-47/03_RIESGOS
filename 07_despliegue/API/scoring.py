@@ -25,8 +25,7 @@ COLUMNAS_PREDICTORAS = [
 TOPE_INGRESOS = 400000
 
 # ── Supuestos de la tasa sugerida (ilustrativos) ─────────
-# Vienen del ejemplo de la nota "Precio según riesgo" del vault: la tasa se arma
-# sumando lo que cuesta el dinero, lo que cuesta operar, la ganancia y la pérdida esperada.
+# la tasa se arma sumando lo que cuesta el dinero, lo que cuesta operar, la ganancia y la pérdida esperada.
 # No son la política de ningún banco real: se pueden cambiar aquí, en un solo sitio.
 COSTO_FONDEO = 3.0         # % anual: lo que le cuesta al banco conseguir el dinero
 COSTOS_OPERATIVOS = 0.7    # % anual: lo que cuesta operar el préstamo

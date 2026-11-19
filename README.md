@@ -30,6 +30,7 @@ El analista busca por nombre **un cliente con perfil registrado**, ve su ficha, 
 | Pérdida esperada en dinero | Cuánto se espera perder con este préstamo |
 | **Tasa sugerida** | "Se puede aprobar desde X % anual" |
 | Comparación 36 contra 60 meses | Ver cuál plazo pierde menos |
+| Asistente de alternativas (solo en riesgo alto) | Propone montos y plazos que bajan el riesgo, con cifras de los modelos |
 
 ## Semáforo de riesgo: cortes de 8 % y 15 %
 
@@ -43,6 +44,22 @@ La app clasifica cada solicitud con la probabilidad de impago (PD) que devuelve 
 | Medio | de **8 %** a **15 %** | 37 % |
 | Alto | mayor a **15 %** | 25 % |
 
+Los cortes rodean la tasa base de default (11,86 %) y dejan la población repartida 38/37/25 %. Un corte en 50 % casi nunca se activaría: solo el 0,21 % de los préstamos supera esa probabilidad.
+
+### Qué dicen los datos de cada banda
+
+| Nivel | Préstamos | Probabilidad de impago que predice el modelo (media) | Impago real | Intervalo del 95 % del impago real |
+|---|---|---|---|---|
+| Bajo | 38,0 % | 5,5 % | 5,0 % | 4,8 a 5,1 % |
+| Medio | 37,2 % | 11,1 % | 11,8 % | 11,6 a 12,1 % |
+| Alto | 24,8 % | 22,7 % | 22,4 % | 22,0 a 22,8 % |
+
+En cristiano: de cada 100 préstamos que el modelo marca como riesgo alto, unos 22 terminan en impago de verdad, y el modelo anunciaba casi 23. En riesgo bajo son 5 de cada 100 y en riesgo medio 12. La probabilidad que muestra la app se parece a lo que realmente pasó, y por eso los cortes separan grupos con un riesgo claramente distinto.
+
+Si se mueven los dos cortes un punto (7 % y 14 %, o 9 % y 16 %), el impago real de cada banda cambia como máximo 1,1 puntos: los cortes no dependen de un número exacto. Lo que sí cambia es cuánta gente cae en cada nivel: cerca del 15 % de los préstamos queda a menos de un punto del corte de 8 % y cerca del 7 % del corte de 15 %. Esas solicitudes cambian de color con facilidad, por eso conviene repetir esta revisión cada vez que se reentrene el modelo.
+
+Impago real son los préstamos cancelados como pérdida o en default. El cálculo usa los 200.000 préstamos y el modelo entrenado con todos ellos, y los préstamos vigentes cuentan como no impagos, así que el impago real podría estar algo subestimado.
+
 Los dos cortes son constantes (`UMBRAL_BAJO` y `UMBRAL_ALTO`) al inicio de `07_despliegue/app/app.py`: si la política de riesgo es otra, se cambian ahí.
 
 ## Cómo funciona
@@ -52,6 +69,26 @@ Los dos cortes son constantes (`UMBRAL_BAJO` y `UMBRAL_ALTO`) al inicio de `07_d
 ![Quién es quién dentro de la API](docs/glosario_schemas_scoring_main.png)
 
 La app no tiene lógica de Machine Learning: todo lo calcula la API.
+
+### El asistente de alternativas
+
+![Quién usa a quién: la app, el chat y las dos puertas de la API](docs/flujo_api_chat.png)
+
+Cuando la probabilidad de impago supera 15 %, la app muestra, a la derecha del medidor de riesgo, un chat con el asistente. Al pulsar "Proponer alternativas" pasa esto:
+
+| Paso | Quién | Qué hace |
+|---|---|---|
+| 1 | La app (`chat_ia.py`) | Envía la solicitud y la pregunta a un modelo de lenguaje (DeepSeek), junto con la lista de herramientas disponibles |
+| 2 | El modelo de lenguaje | Pide usar una herramienta; la app la ejecuta en el servidor MCP de la API (`/mcp/`) |
+| 3 | El servidor MCP (`mcp_alternativas.py`) | Prueba montos entre 10 % y 70 % menores y plazos de 36 y 60 meses con los mismos tres modelos |
+| 4 | El modelo de lenguaje | Redacta la explicación con esas cifras. La tabla se dibuja con los números de la herramienta, no con el texto del modelo |
+
+Reglas del asistente:
+
+* Solo cambia el monto y el plazo. El cliente, la finalidad y la vivienda quedan fijos: la app los fuerza aunque el modelo de lenguaje pida otros.
+* Una alternativa sirve si baja la probabilidad de impago y sale de riesgo alto. Si sigue en riesgo alto, solo se ofrece cuando su pérdida esperada no supera 2.000 dólares (`TOPE_PERDIDA_ESPERADA` en `mcp_alternativas.py`) y se avisa de que sigue en riesgo alto. Ese tope es ilustrativo: lo fija cada banco.
+* El asistente no aprueba nada: la decisión es del analista.
+* La clave de DeepSeek se guarda en la variable `DEEPSEEK_API_KEY`, solo en la app. Sin ella el chat no aparece y la app funciona igual.
 
 ## Supuestos y decisiones que conviene conocer
 
@@ -125,7 +162,8 @@ Esta es una **primera prueba**, hecha para aprender y para mostrar el flujo comp
 | Sin historial crediticio | Quien nunca tuvo ningún crédito no tiene el perfil que el modelo necesita; en banca se resuelve con otras reglas |
 | Datos con 2 plazos y un rango de monto | No se puede extrapolar a otros plazos ni montos |
 | Tasa sugerida con supuestos ilustrativos | No reemplaza una política de precios real y excluye la pérdida inesperada |
-| Cortes del semáforo | 8 % y 15 % son los cortes definidos para este proyecto; cada banco los fija según su política de riesgo |
+| Asistente de alternativas | Solo cambia monto y plazo. No ofrece subir la tasa, porque el modelo no sabe cómo la tasa afecta el impago, y los montos mayores a 40.000 quedan fuera del rango del modelo. Con riesgo alto y un tope de pérdida esperada de 2.000, no todos los casos tienen alternativa |
+| Cortes del semáforo | 8 % y 15 % rodean la tasa base de default (11,86 %); cada banco los fija según su política de riesgo |
 | Clientes ficticios | La demo no usa datos reales de clientes |
 
 ## Aviso sobre datos
@@ -141,7 +179,7 @@ El CSV de perfiles de la carpeta de la API contiene **filas de la base pública 
 | `03_notebooks/` | Importación, calidad, EDA, transformación, modelización (07 PD, 08 EAD, 09 LGD) y preproducción (10) |
 | `04_scripts/` | Funciones reutilizables (`utils.py`) |
 | `06_resultados/` | Un informe en Markdown por fase |
-| `07_despliegue/` | Scripts de reentrenamiento y scoring, API (`API/`) y app (`app/`) |
+| `07_despliegue/` | Scripts de reentrenamiento y scoring, API (`API/`, con el servidor MCP) y app (`app/`, con el chat) |
 | `docs/` | Diagramas |
 
 Informes por fase: `06_resultados/` (calidad de datos, EDA, transformación, preselección, modelización, preproducción, API y app).
@@ -152,10 +190,10 @@ Necesita [uv](https://docs.astral.sh/uv/) y Python 3.12 o superior. Dos terminal
 
 | Terminal | Carpeta | Comando |
 |---|---|---|
-| 1, la API | `07_despliegue/API` | `uv run uvicorn main:app --reload` |
-| 2, la app | `07_despliegue/app` | `uv run streamlit run app.py` |
+| 1, la API | `07_despliegue/API` | `uv run --with fastmcp==4.2.0 uvicorn main:app --reload` |
+| 2, la app | `07_despliegue/app` | `uv run --with fastmcp==4.2.0 --with openai==3.50.0 streamlit run app.py` |
 
-La API queda en http://127.0.0.1:8000 (`/docs` muestra la documentación). La app lee la dirección de la API de la variable de entorno `API_BASE_URL`; si no existe, usa la local.
+La API queda en http://127.0.0.1:8000 (`/docs` muestra la documentación). Para probar el asistente hace falta `DEEPSEEK_API_KEY` en un archivo `.env` en la raíz del proyecto (no se sube) o como variable de entorno. La app lee la dirección de la API de la variable de entorno `API_BASE_URL`; si no existe, usa la local.
 
 Ejemplo de llamada a la API:
 
@@ -174,7 +212,7 @@ Si se envía `tipo_interes` u otro campo no previsto, la API responde 422.
 
 **Búsqueda de clientes.** `GET /clientes/buscar?q=maria&tamano=10&pagina=1` devuelve las coincidencias por nombre, paginadas. La lista completa `GET /clientes` es solo de demostración.
 
-**Clave de acceso, opcional.** Si se define la variable de entorno `API_KEY`, todas las rutas menos `/health` exigen la cabecera `X-API-Key` (sin ella, 401). En la demo pública está apagada para que cualquiera pueda probarla; la app envía la clave si tiene su propia variable `API_KEY`.
+**Clave de acceso, opcional.** Si se define la variable de entorno `API_KEY`, todas las rutas menos `/health` exigen la cabecera `X-API-Key` (sin ella, 401); la puerta del MCP (`/mcp/`) también la exige. En la demo pública está apagada para que cualquiera pueda probarla; la app envía la clave si tiene su propia variable `API_KEY`.
 
 ## Cómo reentrenar y volver a puntuar
 
@@ -194,10 +232,10 @@ El primero busca hiperparámetros, mide una sola vez con la reserva y guarda los
 | Root Directory | `07_despliegue/API` | `07_despliegue/app` |
 | Build Command | `pip install -r requirements.txt` | `pip install -r requirements.txt` |
 | Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` | `streamlit run app.py --server.port $PORT --server.address 0.0.0.0` |
-| Variables | `PYTHON_VERSION=3.12.13` | `PYTHON_VERSION=3.12.13` y `API_BASE_URL=https://zero3-riesgos.onrender.com` |
+| Variables | `PYTHON_VERSION=3.12.13` (y `API_KEY`, opcional) | `PYTHON_VERSION=3.12.13`, `API_BASE_URL=https://zero3-riesgos.onrender.com` y `DEEPSEEK_API_KEY` (y `API_KEY` con el mismo valor que la API, si se activa) |
 
 Primero se despliega la API y después la app.
 
 ## Tecnologías
 
-Python 3.12, pandas, scikit-learn, FastAPI, Pydantic, Streamlit, Plotly y Render. Entorno gestionado con uv.
+Python 3.12, pandas, scikit-learn, FastAPI, FastMCP, Pydantic, Streamlit, Plotly, DeepSeek (asistente) y Render. Entorno gestionado con uv.

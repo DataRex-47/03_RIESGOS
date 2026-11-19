@@ -4,9 +4,8 @@ import secrets
 from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 
-# ── Clave de acceso (opcional) ─────────
-# La clave viaja en la cabecera X-API-Key, como una pulsera de concierto:
-# quien no la muestra no pasa. Vive en una variable de entorno, nunca en el código.
+# ── Clave de acceso  ─────────
+# La clave viaja en la cabecera X-API-Key: quien no la envía no pasa. Vive en una variable de entorno.
 #   - Sin API_KEY configurada la API queda abierta (demo pública y desarrollo local).
 #   - Con API_KEY configurada, todas las rutas protegidas piden la clave.
 cabecera = APIKeyHeader(name="X-API-Key", auto_error=False)

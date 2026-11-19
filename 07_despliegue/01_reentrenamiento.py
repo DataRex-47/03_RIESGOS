@@ -1,22 +1,20 @@
-# ═══════════════════════════════════════════════════════════════════════
-# REENTRENAMIENTO DE LOS TRES MODELOS: PD, EAD y LGD
-# ═══════════════════════════════════════════════════════════════════════
+# Reentrenamiento de los tres modelos: PD, EAD y LGD
 #
 # Qué hace este archivo, en una frase:
 #   para cada modelo busca la mejor receta, mide su nota real una sola vez
 #   y deja guardado el modelo final que usa la API.
 #
 # Mapa del archivo (se lee de arriba abajo, sin saltos):
-#   PASO 1  Rutas
-#   PASO 2  Listas de columnas
-#   PASO 3  Las dos funciones propias que viajan dentro del modelo
-#   PASO 4  Cargar los datos, crear los tres objetivos y apartar la reserva
-#   PASO 5  El preprocesador (la receta que limpia cada columna)
-#   PASO 6  La parrilla: los candidatos que compiten
-#   PASO 7  El bucle: PD, EAD y LGD pasan por los mismos 4 pasos
-#   PASO 8  Resumen final
+#   Paso 1  Rutas
+#   Paso 2  Listas de columnas
+#   Paso 3  Las dos funciones propias que viajan dentro del modelo
+#   Paso 4  Cargar los datos, crear los tres objetivos y apartar la reserva
+#   Paso 5  El preprocesador (la receta que limpia cada columna)
+#   Paso 6  La parrilla: los candidatos que compiten
+#   Paso 7  El bucle: PD, EAD y LGD pasan por los mismos 4 pasos
+#   Paso 8  Resumen final
 #
-# Los 4 pasos del bucle (el corazón del archivo):
+# Los 4 pasos del bucle:
 #   7.1 Elegir filas   7.2 Buscar   7.3 Medir   7.4 Producir
 
 from pathlib import Path
@@ -40,9 +38,7 @@ from sklearn.preprocessing import (
 )
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# PASO 1. RUTAS
-# ═══════════════════════════════════════════════════════════════════════
+# ── Paso 1. Rutas ─────────
 # RAIZ es la carpeta del proyecto (una carpeta más arriba que este archivo).
 RAIZ = Path(__file__).resolve().parents[1]
 
@@ -54,9 +50,7 @@ carpeta_salida = RAIZ / "07_despliegue"
 GUARDAR = True
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# PASO 2. LISTAS DE COLUMNAS
-# ═══════════════════════════════════════════════════════════════════════
+# ── Paso 2. Listas de columnas ─────────
 # Las 12 columnas que entran al modelo, agrupadas por el tratamiento que reciben.
 categoricas = ["ingresos_verificados", "vivienda", "finalidad", "num_cuotas"]  # una columna de 0 y 1 por categoría
 ordinales = ["antigüedad_empleo", "rating"]  # categorías con orden (de menos a más)
@@ -79,9 +73,7 @@ estados_default = [
 ]
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# PASO 3. LAS DOS FUNCIONES PROPIAS QUE VIAJAN DENTRO DEL MODELO
-# ═══════════════════════════════════════════════════════════════════════
+# ── Paso 3. Las dos funciones propias que viajan dentro del modelo ─────────
 # Estas dos van dentro del pipeline: cuando la API reciba un cliente nuevo,
 # las aplicará igual que aquí. Por eso son funciones y no código suelto.
 
@@ -103,9 +95,7 @@ def limita_numericas(X):
     return X
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# PASO 4. DATOS: CARGAR, CREAR LOS TRES OBJETIVOS Y APARTAR LA RESERVA
-# ═══════════════════════════════════════════════════════════════════════
+# ── Paso 4. Datos: cargar, crear los tres objetivos y apartar la reserva ─────────
 datos = pd.read_csv(ruta_csv)
 
 # Calidad: se descartan los préstamos con ingresos mayores a 400000.
@@ -150,9 +140,7 @@ reserva = datos[es_reserva]   # el 30 %: aquí se mide
 # datos completos: aquí se produce el modelo final
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# PASO 5. EL PREPROCESADOR (la receta que limpia cada grupo de columnas)
-# ═══════════════════════════════════════════════════════════════════════
+# ── Paso 5. El preprocesador (la receta que limpia cada grupo de columnas) ─────────
 def crea_preprocesador():
     # Categóricas: unir categorías raras, rellenar vacíos con la más común, una columna 0/1 por categoría.
     receta_categoricas = make_pipeline(
@@ -191,9 +179,7 @@ def crea_preprocesador():
     )
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# PASO 6. LA PARRILLA: LOS CANDIDATOS QUE COMPITEN
-# ═══════════════════════════════════════════════════════════════════════
+# ── Paso 6. La parrilla: los candidatos que compiten ─────────
 # Una sola definición del modelo de árboles, para que "loss" viva en un único lugar.
 #   loss    = lo que cada árbol intenta reducir al aprender (aquí, el error absoluto)
 #   scoring = con qué se califica un 10 % apartado para decidir cuándo dejar de agregar árboles
@@ -236,9 +222,7 @@ def mae_acotado(y_real, y_predicho):
     return mean_absolute_error(y_real, np.clip(y_predicho, 0, 1))
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# PASO 7. EL BUCLE: PD, EAD y LGD PASAN POR LOS MISMOS 4 PASOS
-# ═══════════════════════════════════════════════════════════════════════
+# ── Paso 7. El bucle: PD, EAD y LGD pasan por los mismos 4 pasos ─────────
 resumen = []
 
 for nombre in ["PD", "EAD", "LGD"]:
@@ -347,9 +331,7 @@ for nombre in ["PD", "EAD", "LGD"]:
     resumen.append([nombre, nombre_metrica, nota_cv, nota_reserva])
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# PASO 8. RESUMEN FINAL
-# ═══════════════════════════════════════════════════════════════════════
+# ── Paso 8. Resumen final ─────────
 print("")
 print("Modelo | Métrica | Validación cruzada | Reserva")
 for fila in resumen:

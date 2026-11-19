@@ -633,16 +633,14 @@ def regularizar_grupo(g):
     return g_diario
 
 
-# ══════════════════════════════════════════════════════════════════════
-# FUNCIÓN: rotura_stock
-# ══════════════════════════════════════════════════════════════════════
-# QUÉ HACE, EN CRISTIANO:
+# ── Función: rotura_stock ─────────
+# Qué hace:
 #   Mira los últimos "n" días de ventas de UNA serie (un solo producto en
 #   una sola tienda). Si TODOS esos n días seguidos fueron cero ventas,
 #   apunta un 1 (sospecha de rotura de stock). Si algún día hubo venta,
 #   apunta un 0.
 #
-# CÓMO SE USA:
+# Cómo se usa:
 #   No se llama directamente sobre todo el dataframe, se llama DENTRO de
 #   groupby().transform(). Por eso "ventas" aquí NO es toda la columna del
 #   dataset: es la columna de ventas de UN ÚNICO par tienda-producto.

@@ -49,6 +49,8 @@ __pycache__/
 # Documentos
 *.pdf
 /01_Documentos/Resumen_En_Cristiano.md
+/01_Documentos/Guia_Reentrenamiento.md
+/07_despliegue/mcp_borrador/
 /01_Documentos/notebooks_referencia/
 
 # Configuración local de Copilot
@@ -68,3 +70,4 @@ __pycache__/
 !07_despliegue/api/artefacto_pipeline_pd.pkl
 !07_despliegue/api/artefacto_pipeline_ead.pkl
 !07_despliegue/api/artefacto_pipeline_lgd.pkl
+/07_despliegue/mcp_explicacion/

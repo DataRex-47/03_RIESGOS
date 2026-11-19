@@ -4,11 +4,11 @@ from pathlib import Path
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query
 
-#trae registroentrada que es lo que entra desde la app/erp de schemas, para
-#entrar en una funcion
+# Contratos de entrada y salida (schemas), motor de cálculo (scoring), clave y MCP
 from schemas import RegistroEntrada, ScoringSalida
 from scoring import calcula_tasa_sugerida, scoring_df
 from seguridad import verifica_clave
+from mcp_alternativas import crea_app_mcp
 
 # ── Historial de clientes ─────────
 # Este CSV simula la base de datos del banco: el historial de cada cliente.
@@ -48,8 +48,9 @@ historial["nombre_busqueda"] = historial["nombre"].apply(sin_tildes)
 # ── Entrada del modelo: solicitud + historial ─────────
 def prepara_entrada(solicitudes):
     filas = []
-    #por cada
+
     for solicitud in solicitudes:
+        # Si el cliente no está en el historial, no hay con qué calcular
         if solicitud.id_cliente not in historial.index:
             raise HTTPException(
                 status_code=404,
@@ -57,9 +58,9 @@ def prepara_entrada(solicitudes):
             )
 
         # Los cinco datos de la solicitud + los ocho del historial
-        fila = solicitud.model_dump() #los dumpea
-        #como to json, mezcla en el diccionario todas las columnas juntas y las prepara
+        fila = solicitud.model_dump()
         fila.update(historial.loc[solicitud.id_cliente, COLUMNAS_HISTORIAL].to_dict())
+
         # El modelo aprendió el plazo como texto con un espacio delante: " 36 months"
         fila["num_cuotas"] = " " + str(solicitud.num_cuotas) + " months"
         filas.append(fila)
@@ -68,7 +69,10 @@ def prepara_entrada(solicitudes):
 
 
 # ── Aplicación ─────────
-app = FastAPI(title="API de scoring de riesgos")
+# El MCP es un servidor aparte que vive dentro de esta misma API: sirve las tools del chat.
+mcp_app = crea_app_mcp(prepara_entrada)
+app = FastAPI(title="API de scoring de riesgos", lifespan=mcp_app.lifespan)
+app.mount("/mcp", mcp_app)
 
 
 # ── Rutas ─────────
@@ -140,17 +144,19 @@ def ficha_cliente(id_cliente: int):
         "num_derogatorios": int(datos["num_derogatorios"]),
     }
 
-#El resto es la respuesta cuando alguien haga el post, desde donde sea
+# ── Ruta principal: calcula el scoring de una o varias solicitudes ─────────
 @app.post("/predict", response_model=list[ScoringSalida], dependencies=[Depends(verifica_clave)])
 def predict(solicitudes: list[RegistroEntrada]):
+    # ── Paso 1. De la solicitud a la tabla del modelo ─────────
     datos = prepara_entrada(solicitudes)
 
+    # ── Paso 2. Los tres modelos calculan ─────────
     try:
         resultados = scoring_df(datos)
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Error en el modelo: {error}")
 
-    # Pasamos cada fila a tipos simples de Python para la respuesta
+    # ── Paso 3. De la tabla de resultados a una lista de diccionarios ─────────
     respuesta = []
     posicion = 0
     for _, fila in resultados.iterrows():
@@ -170,4 +176,6 @@ def predict(solicitudes: list[RegistroEntrada]):
                 "tasa_sugerida": float(tasa_sugerida),
             }
         )
+
+    # ── Paso 4. FastAPI convierte esta lista en el JSON de respuesta ─────────
     return respuesta

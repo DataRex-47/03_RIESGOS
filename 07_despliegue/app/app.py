@@ -55,6 +55,8 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
+from chat_ia import dibuja_chat
+
 CARPETA = Path(__file__).resolve().parent
 
 
@@ -184,6 +186,9 @@ def aplica_estilos():
         .banner-frase { color: #1B2733; font-size: 1.05rem; margin-top: 4px; }
         .banner > div:first-child { flex: 2 1 320px; }
         .banner-cifra { text-align: right; flex: 1 1 190px; }
+        .encabezado { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 18px; }
+        .leyenda-corta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; color: #5B6670; font-size: 0.85rem; }
+        .leyenda-corta .punto { width: 10px; height: 10px; margin-right: 5px; }
         .leyenda { display: flex; align-items: center; gap: 10px; padding: 4px 0; color: #1B2733; }
         .leyenda:last-child { margin-bottom: 10px; }
         .punto { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
@@ -286,16 +291,29 @@ def dibuja_formulario():
             cliente = st.selectbox("Cliente", clientes, format_func=etiqueta_cliente)
             if total > len(clientes):
                 st.caption(f"Se muestran {len(clientes)} de {total} coincidencias. Escribe más letras para acotar.")
-            st.caption(
-                "La demo busca el perfil del solicitante en una base de ejemplo: los perfiles son de una base "
-                "pública de préstamos y los nombres son inventados. En la vida real vendría del formulario y de la central de riesgo."
-            )
             id_cliente = cliente["id_cliente"]
-            dibuja_ficha(carga_ficha(int(id_cliente)))
+            with st.expander("Ver perfil del cliente"):
+                st.caption(
+                    "La demo busca el perfil del solicitante en una base de ejemplo: los perfiles son de una base "
+                    "pública de préstamos y los nombres son inventados. En la vida real vendría del formulario y de la central de riesgo."
+                )
+                dibuja_ficha(carga_ficha(int(id_cliente)))
 
     with col_solicitud:
         with st.container(border=True):
-            st.markdown("<div class='seccion'>Solicitud de préstamo</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div class='encabezado'>
+                    <div class='seccion'>Solicitud de préstamo</div>
+                    <div class='leyenda-corta'>
+                        <span><span class='punto' style='background:{VERDE};'></span>Bajo &lt; {UMBRAL_BAJO * 100:.0f} %</span>
+                        <span><span class='punto' style='background:{AMBAR};'></span>Medio {UMBRAL_BAJO * 100:.0f} a {UMBRAL_ALTO * 100:.0f} %</span>
+                        <span><span class='punto' style='background:{ROJO};'></span>Alto &gt; {UMBRAL_ALTO * 100:.0f} %</span>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
             col1, col2 = st.columns(2, gap="large")
             with col1:
                 principal = st.slider("Monto del préstamo (USD)", 500, 40000, 10000, step=500, format="$%d")
@@ -304,18 +322,7 @@ def dibuja_formulario():
                 plazo = st.radio("Plazo", list(PLAZOS.keys()), horizontal=True)
                 vivienda = st.selectbox("Situación de vivienda", list(VIVIENDAS.keys()))
             st.caption("La tasa no se escribe: el banco la fija según el riesgo, y la app te la sugiere en el resultado.")
-            boton = st.button("Evaluar solicitud", type="primary")
-
-        with st.container(border=True):
-            st.markdown("<div class='seccion'>Cómo leer el semáforo</div>", unsafe_allow_html=True)
-            st.markdown(
-                f"""
-                <div class='leyenda'><span class='punto' style='background:{VERDE};'></span><b>Riesgo bajo:</b> probabilidad de impago menor a {UMBRAL_BAJO * 100:.0f} %</div>
-                <div class='leyenda'><span class='punto' style='background:{AMBAR};'></span><b>Riesgo medio:</b> de {UMBRAL_BAJO * 100:.0f} % a {UMBRAL_ALTO * 100:.0f} %</div>
-                <div class='leyenda'><span class='punto' style='background:{ROJO};'></span><b>Riesgo alto:</b> mayor a {UMBRAL_ALTO * 100:.0f} %</div>
-                """,
-                unsafe_allow_html=True,
-            )
+            boton = st.button("Evaluar solicitud", type="primary") #Evaluar solicitud
 
     solicitud = {
         "id_cliente": int(id_cliente),
@@ -360,7 +367,7 @@ def dibuja_banner(monto, r):
     )
 
 
-def dibuja_medidor_pd(pd_score):
+def dibuja_medidor_pd(pd_score, altura=190):
     # El eje llega a 50 % para que se vean bien las tres zonas del semáforo
     figura = go.Figure(
         go.Indicator(
@@ -382,7 +389,7 @@ def dibuja_medidor_pd(pd_score):
             },
         )
     )
-    figura.update_layout(height=190, margin=dict(l=30, r=30, t=20, b=0), paper_bgcolor="rgba(0,0,0,0)")
+    figura.update_layout(height=altura, margin=dict(l=30, r=30, t=20, b=0), paper_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(figura, width="stretch")
 
 
@@ -453,6 +460,32 @@ def dibuja_cascada(monto, r):
     )
 
 
+def dibuja_detalle(monto, r):
+    col1, col2 = st.columns(2, gap="medium")
+    with col1:
+        with st.container(border=True, height=300):
+            dibuja_medida(
+                "Cuánto debería al fallar (EAD)",
+                r["ead_score"],
+                AZUL,
+                f"Si deja de pagar, aún debería {dinero(monto * r['ead_score'])} de los {dinero(monto)} prestados.",
+                dinero(monto * r["ead_score"]),
+                "quedarían por pagar al momento de fallar",
+            )
+    with col2:
+        with st.container(border=True, height=300):
+            dibuja_medida(
+                "Cuánto no se recupera (LGD)",
+                r["lgd_score"],
+                TURQUESA,
+                f"Del saldo pendiente, el banco no lograría recuperar el {porcentaje(r['lgd_score'])}.",
+                dinero(monto * r["ead_score"] * r["lgd_score"]),
+                "se perderían si el cliente no paga",
+            )
+    st.write("")
+    dibuja_cascada(monto, r)
+
+
 def dibuja_veredicto(solicitud):
     if "evaluacion" not in st.session_state:
         st.markdown(
@@ -476,9 +509,29 @@ def dibuja_veredicto(solicitud):
 
     dibuja_banner(monto, r)
     st.write("")
-    dibuja_medidas(monto, r)
+
+    # El gráfico a la izquierda; a la derecha, el asistente si el riesgo es alto
+    col_grafico, col_derecha = st.columns([4, 6], gap="large")
+    with col_grafico:
+        with st.container(border=True):
+            st.markdown("<div class='etiqueta'>Probabilidad de impago (PD)</div>", unsafe_allow_html=True)
+            dibuja_medidor_pd(r["pd_score"], altura=250)
+            st.markdown(
+                f"<div class='pista'>De cada 100 préstamos como este, unos {r['pd_score'] * 100:.0f} no se pagarían.</div>",
+                unsafe_allow_html=True,
+            )
+    with col_derecha:
+        if r["pd_score"] > UMBRAL_ALTO:
+            with st.container(border=True):
+                dibuja_chat(evaluada)
+        else:
+            with st.container(border=True):
+                st.markdown("#### Sin alternativas por proponer")
+                st.write("El riesgo no es alto, así que el asistente de alternativas no hace falta. Abre el detalle del cálculo para ver cómo se llegó a este resultado.")
+
     st.write("")
-    dibuja_cascada(monto, r)
+    with st.expander("Ver detalle del cálculo"):
+        dibuja_detalle(monto, r)
 
 
 # ── Pantalla: comparar 36 contra 60 meses ─────────
@@ -568,7 +621,7 @@ if evaluar:
     st.session_state["evaluacion"] = (solicitud, datos, error)
 
 st.write("")
-pestana_veredicto, pestana_comparar = st.tabs(["Evaluar solicitud", "Comparar plazos"])
+pestana_veredicto, pestana_comparar = st.tabs(["Resultado", "Comparar plazos"])
 with pestana_veredicto:
     dibuja_veredicto(solicitud)
 with pestana_comparar:

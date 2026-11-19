@@ -39,7 +39,7 @@ status: 🌱 (Seed)
 
 | Decisión | Opciones | Quién decide | Qué bloquea | Desde |
 |---|---|---|---|---|
-| Cortes del semáforo (propuesta puesta en la app: 8 % y 15 %) | Confirmarlos o moverlos. Con los modelos nuevos y los 200.000 préstamos: 38,0 % bajo, 37,2 % medio y 24,8 % alto | Rex | Nada técnico: son dos constantes al inicio de `app.py` | 27/10 |
+| Cortes del semáforo (confirmados por Rex el 13/11: 8 % y 15 %, rodean la tasa base de default de 11,86 %) | Ya confirmados; solo se mueven si cambia la política. Con los modelos nuevos y los 200.000 préstamos: 38,0 % bajo, 37,2 % medio y 24,8 % alto | Rex | Nada técnico: son dos constantes al inicio de `app.py` | 27/10 |
 | Supuestos de la tasa sugerida (fondeo 3,0 %, costos 0,7 %, margen 1,3 %) | Dejarlos como ilustrativos o ajustarlos | Rex | Nada técnico: son tres constantes en `API/scoring.py` | 31/10 |
 
 ### ✅ Decisiones ya cerradas
@@ -69,7 +69,7 @@ A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 B
     ✅             ✅           ✅           ✅              ⏭️ omitida       ⏭️ omitida      ✅               ✅             ✅
 ```
 
-**Diferencia con los casos 1 y 2:** técnicamente es el más sencillo, pero el más cargado de negocio. Y el énfasis está en el **despliegue**: una app en Streamlit que llama por POST a una API en FastAPI publicada en Render (diagramas en `docs/flujo_app_api_modelo.png`; el `diagrama_despliegue_v2.png` es el boceto inicial y aún muestra la tasa y plazos de 12 a 48 meses).
+**Diferencia con los casos 1 y 2:** técnicamente es el más sencillo, pero el más cargado de negocio. Y el énfasis está en el **despliegue**: una app en Streamlit que llama por POST a una API en FastAPI publicada en Render (diagramas en `docs/flujo_app_api_modelo.png`).
 
 ---
 

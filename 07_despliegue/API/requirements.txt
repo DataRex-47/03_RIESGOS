@@ -9,3 +9,4 @@ scikit-learn==1.9.1
 scipy==1.18.1
 threadpoolctl==3.7.0
 uvicorn==0.54.0
+fastmcp==4.2.0
