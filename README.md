@@ -56,6 +56,16 @@ Los cortes rodean la tasa base de default (11,86 %) y dejan la población repart
 
 De cada 100 préstamos que el modelo marca como riesgo alto, unos 22 terminan en impago real (el modelo anunciaba casi 23). En riesgo medio son 12 y en riesgo bajo 5. La probabilidad que muestra la app se parece a lo que pasó, y por eso los cortes separan grupos con riesgo distinto. Mover los dos cortes un punto cambia el impago real de cada banda como máximo 1,1 puntos, así que no dependen de un número exacto. El detalle de esta revisión está en la bitácora (`01_Documentos/`).
 
+Visto como clasificador, y calculado sobre los 200.000 préstamos igual que la tabla anterior, cada corte da lo siguiente por cada 1.000 solicitudes (119 son morosos reales).
+
+| Corte | Marcados | Morosos atrapados (recall) | Buenos marcados por error | Precisión |
+|---|---|---|---|---|
+| 50 %, el valor por defecto | 2 | 1 de 119 | 1 | 41 % |
+| 15 %, riesgo alto | 248 | 56 de 119 (47 %) | 192 | 22 % |
+| 8 %, riesgo medio o alto | 620 | 100 de 119 (84 %) | 520 | 16 % |
+
+El AUC (0,698) no cambia con el corte, porque mide el orden del riesgo antes de decidir dónde cortar. Lo que cambia es cuántos morosos se atrapan y a cuántos buenos se castiga. Con el 50 % que trae `predict()` casi nadie quedaba en riesgo alto, y por eso se definieron los cortes del semáforo.
+
 Los dos cortes son constantes (`UMBRAL_BAJO` y `UMBRAL_ALTO`) al inicio de `07_despliegue/app/app.py`. Si la política de riesgo es otra, se cambian ahí.
 
 ## Cómo funciona
