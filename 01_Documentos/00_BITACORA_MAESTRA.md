@@ -250,6 +250,13 @@ A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 B
 
 ---
 
+### Revisión de los cortes del semáforo (8 % y 15 %)
+
+* Si se mueven los cortes un punto (7 % y 14 %, o 9 % y 16 %), el impago real de cada banda cambia como máximo 1,1 puntos. Los cortes no dependen de un número exacto.
+* Lo que sí cambia es cuánta gente cae en cada nivel. Cerca del 15 % de los préstamos queda a menos de un punto del corte de 8 % y cerca del 7 % del corte de 15 %. Esas solicitudes cambian de color con facilidad, por eso conviene repetir esta revisión cada vez que se reentrene el modelo.
+* Impago real son los préstamos cancelados como pérdida o en default. El cálculo usa los 200.000 préstamos y el modelo entrenado con todos ellos. Los préstamos vigentes cuentan como no impagos, así que el impago real podría estar algo subestimado.
+* El lift de la PD se lee como el porcentaje de impagos capturados dividido entre el porcentaje de clientes revisados. Con el 20 % más riesgoso se captura el 40 %, así que 40 ÷ 20 = 2,0. Escogiendo al azar sería 1.
+
 ## 🧰 Funciones del catálogo usadas hasta ahora
 
 | Función | Para qué se usó |
