@@ -233,7 +233,7 @@ A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 B
 | Pieza | Dónde | Qué hace |
 |---|---|---|
 | API | https://zero3-riesgos.onrender.com/ | `GET /health`, `GET /clientes` (solo ids), `GET /clientes/{id}` (ficha) y `POST /predict` (lista de registros con 5 campos; devuelve PD, EAD, LGD, pérdida esperada y tasa sugerida) |
-| App | https://zero3-riesgos-aplicacion.onrender.com | Marca Bancandrex. Pestañas "Evaluar solicitud" y "Comparar plazos" (36 contra 60 meses). Ficha del cliente, banner de riesgo con la tasa sugerida, medidor de PD, barras de EAD y LGD, cascada de la pérdida esperada |
+| App | https://zero3-riesgos-app-frontend-streamlit.onrender.com | Marca Bancandrex. Pestañas "Evaluar solicitud" y "Comparar plazos" (36 contra 60 meses). Ficha del cliente, banner de riesgo con la tasa sugerida, medidor de PD, barras de EAD y LGD, cascada de la pérdida esperada |
 | URL de la API en la app | Variable de entorno `API_BASE_URL` | Por defecto `http://127.0.0.1:8000`; en Render vale la URL de la API. El código no cambia |
 | Python en Render | `PYTHON_VERSION=3.12.13` | Los `.pkl` solo cargan bien con la misma versión menor de Python |
 

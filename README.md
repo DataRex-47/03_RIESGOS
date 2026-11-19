@@ -15,7 +15,7 @@ Hay tres modelos de Machine Learning (uno por pieza), una API (FastAPI) que los 
 | Servicio | Dirección |
 |---|---|
 | API | https://zero3-riesgos.onrender.com/docs |
-| App | https://zero3-riesgos-aplicacion.onrender.com |
+| App | https://zero3-riesgos-app-frontend-streamlit.onrender.com |
 
 > **Primera visita lenta.** Render duerme los servicios gratuitos: la primera consulta puede tardar hasta un minuto en despertar la API.
 
