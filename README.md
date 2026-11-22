@@ -89,6 +89,8 @@ Cuando la probabilidad de impago supera 15 %, la app muestra, a la derecha del m
 | 3 | El servidor MCP (`mcp_alternativas.py`) | Prueba montos entre 10 % y 70 % menores y plazos de 36 y 60 meses con los mismos tres modelos |
 | 4 | El modelo de lenguaje | Redacta la explicación con esas cifras. La tabla se dibuja con los números de la herramienta, no con el texto del modelo |
 
+En términos de MCP (Model Context Protocol), la app hace de anfitrión, con `chat_ia.py` como cliente, y la API hace de servidor en `/mcp/`. El modelo de lenguaje nunca habla con el servidor, siempre pasa por la app.
+
 **Reglas del asistente**
 
 * Solo cambia el monto y el plazo. El cliente, la finalidad y la vivienda quedan fijos, y la app los fuerza aunque el modelo de lenguaje pida otros.

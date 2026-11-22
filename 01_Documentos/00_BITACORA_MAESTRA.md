@@ -8,7 +8,7 @@ status: 🌱 (Seed)
 
 # 🧭 Bitácora Maestra: Caso 3 · Scoring de Riesgos
 
-> 📍 **Bitacorizado hasta:** reentrenamiento sin tasa ni cuota, API con tasa sugerida y app con ficha del cliente, todo documentado (31/10/2026) · siguiente paso: push, validar en Render y confirmar los cortes del semáforo
+> 📍 **Bitacorizado hasta:** reentrenamiento sin tasa ni cuota, API con tasa sugerida y app con ficha del cliente, todo documentado (31/10/2026), más el asistente de alternativas desplegado en Render y la tabla de recall y precisión por corte (22/11/2026) · siguiente paso: Parte 9
 
 > [!SUMMARY] Para qué sirve
 > Reengancharte en 3 minutos y practicar sin releer los notebooks.
@@ -25,7 +25,7 @@ status: 🌱 (Seed)
 
 **Cambio grande (31/10/2026): la tasa sale de los modelos.** `tipo_interes` e `imp_cuota` dejaron de ser predictoras (la tasa la fija el banco según el riesgo, así que usarla para predecir el riesgo era circular). Se reentrenó todo, la API devuelve una `tasa_sugerida` y la app ya no tiene control de tasa. README del proyecto escrito.
 
-**Siguiente acción:** push (carpeta API primero y luego la app), validar en Render, confirmar los cortes del semáforo y el informe corto de arquitectura.
+**Siguiente acción:** Parte 9, práctica con poca IA (ver `Contextos/PROMPT_ML_Vigente.md`). Los cortes del semáforo ya quedaron confirmados y el caso está desplegado.
 
 **Contrato de entrada vigente (31/10/2026):** 5 campos por la app (`id_cliente`, `principal` de 500 a 40.000, `num_cuotas` 36 o 60, `finalidad`, `vivienda`) y 8 por el historial del cliente en CSV (`ingresos`, `ingresos_verificados`, `rating`, `dti`, `antigüedad_empleo`, `num_lineas_credito`, `porc_uso_revolving`, `num_derogatorios`). Salida: `pd_score`, `ead_score`, `lgd_score`, `perdida_esperada` y `tasa_sugerida`. Detalle en `07_despliegue/variables_entrada_backend.md`.
 
@@ -249,6 +249,14 @@ A_01 Import > A_02 Calidad > A_03 EDA > A_04 Transform > A_05 Preselec. > A_06 B
 > 2. Explica por qué la tasa no puede ser una entrada del modelo de riesgo, y cómo se calcula la tasa sugerida.
 
 ---
+
+### Asistente de alternativas y despliegue del chat (18 al 22/11/2026)
+
+- La app tiene un chat con DeepSeek que, cuando la probabilidad de impago pasa de 15 %, propone montos y plazos que bajan el riesgo.
+- Las cifras salen de un servidor MCP propio (`mcp_alternativas.py`, montado en `/mcp/` de la API) que usa los mismos tres modelos. DeepSeek solo redacta y pide herramientas.
+- En términos de MCP, la app es el anfitrión (`chat_ia.py` con su cliente) y la API es el servidor. El servidor ofrece 4 tools, ningún resource ni prompt.
+- API y app están en dos servicios de Render. La variable `DEEPSEEK_API_KEY` vive solo en la app. Se probó de punta a punta con DeepSeek real.
+- Como Render duerme los servicios gratis, la app despierta la API desde el navegador al abrirse (`despierta_api_desde_navegador()` en `app.py`).
 
 ### Revisión de los cortes del semáforo (8 % y 15 %)
 
