@@ -54,6 +54,7 @@ from urllib.parse import quote
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 from chat_ia import dibuja_chat
 
@@ -82,6 +83,27 @@ def despierta_api():
             pass
         time.sleep(3)
     return False
+
+
+def despierta_api_desde_navegador():
+    # Render solo despierta un servicio dormido cuando el pedido llega desde un navegador.
+    # Este bloque invisible hace que el navegador de quien abre la app toque la API
+    # (como si abriera su enlace) y repite el toque cada 5 segundos durante 3 minutos.
+    if API_BASE_URL.startswith("http://127.0.0.1") or API_BASE_URL.startswith("http://localhost"):
+        return
+    url_salud = API_BASE_URL + "/health"
+    codigo = (
+        "<iframe src='" + url_salud + "' style='display:none'></iframe>"
+        "<script>"
+        "var intentos = 0;"
+        "var reloj = setInterval(function () {"
+        "  intentos = intentos + 1;"
+        "  fetch('" + url_salud + "', {mode: 'no-cors'}).catch(function () {});"
+        "  if (intentos >= 36) { clearInterval(reloj); }"
+        "}, 5000);"
+        "</script>"
+    )
+    components.html(codigo, height=0)
 
 
 def llama_api(metodo, ruta, datos=None):
@@ -623,6 +645,7 @@ if favicon.exists():
 else:
     st.set_page_config(page_title="Bancandrex", layout="wide")
 aplica_estilos()
+despierta_api_desde_navegador()
 dibuja_cabecera()
 
 solicitud, evaluar = dibuja_formulario()
