@@ -13,7 +13,7 @@ API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
 # Se queda en el servidor de la app, nunca llega al navegador.
 CLAVE_API = os.environ.get("API_KEY", "")
 TIMEOUT = 60  # Segundos máximos para cada llamada
-ESPERA_MAXIMA = 120  # Segundos máximos esperando que la API despierte
+ESPERA_MAXIMA = 180  # Segundos máximos esperando que la API despierte (en Render tarda entre 1 y 2 minutos)
 
 # Cortes del semáforo sobre la probabilidad de impago (PD)
 UMBRAL_BAJO = 0.08
@@ -71,15 +71,14 @@ def porcentaje(valor):
 
 # ── Cliente HTTP ─────────
 def despierta_api():
-    # Pregunta a /health hasta que responda (Render duerme el servicio gratuito)
+    # Pregunta a /health hasta que responda 200 (Render duerme el servicio gratuito)
+    # Mientras despierta, Render responde 503 o corta la conexión: se sigue esperando
     inicio = time.time()
     while time.time() - inicio < ESPERA_MAXIMA:
         try:
             if requests.get(API_BASE_URL + "/health", timeout=10).status_code == 200:
                 return True
-        except requests.ConnectionError:
-            return False  # La API está apagada: no hay nada que esperar
-        except requests.Timeout:
+        except requests.RequestException:
             pass
         time.sleep(3)
     return False
@@ -100,6 +99,18 @@ def llama_api(metodo, ruta, datos=None):
         return None, "No hay conexión con el servicio. Revisa que la API esté encendida."
     except requests.Timeout:
         return None, "El servicio tardó demasiado en responder. Inténtalo de nuevo."
+
+    # Si Render está despertando la API (502 o 503), espera a que despierte y reintenta una vez
+    if respuesta.status_code in (502, 503):
+        despierta_api()
+        try:
+            respuesta = requests.request(
+                metodo, API_BASE_URL + ruta, json=datos, headers=cabeceras, timeout=TIMEOUT
+            )
+        except requests.RequestException:
+            return None, "El servicio está despertando. Espera un momento y vuelve a intentar."
+        if respuesta.status_code in (502, 503):
+            return None, "El servicio está despertando. Espera un momento y vuelve a intentar."
 
     if respuesta.status_code == 401:
         return None, "La API no aceptó la clave de acceso. Revisa la variable API_KEY de la app."
@@ -123,10 +134,9 @@ def busca_clientes(texto):
     # Pide a la API los clientes cuyo nombre contiene el texto (máximo 20 por página).
     # Con el texto vacío la API devuelve los primeros 20.
     # La primera vez, además, despierta la API (Render duerme el servicio gratuito)
-    if "api_despierta" not in st.session_state:
-        with st.spinner("Conectando con el servicio. Si estaba dormido, puede tardar hasta un minuto."):
-            despierta_api()
-        st.session_state["api_despierta"] = True
+    if not st.session_state.get("api_despierta", False):
+        with st.spinner("Despertando el servicio de cálculo. La primera vez puede tardar uno o dos minutos."):
+            st.session_state["api_despierta"] = despierta_api()
 
     datos, error = llama_api("GET", "/clientes/buscar?tamano=20&q=" + quote(texto.strip()))
     if error:
